@@ -10,6 +10,25 @@
 
 ---
 
+## [2026-08-31] — Modelos de Mongoose
+
+**Hecho:**
+- Creados los 7 schemas de Mongoose en `backend/src/models/`: `user.model.js`, `course.model.js`, `enrollment.model.js`, `document.model.js`, `knowledgeChunk.model.js`, `chatMessage.model.js`, `liveSession.model.js`.
+- Verificado que todos cargan sin errores (`node -e "require(...)"` sobre cada archivo).
+
+**Decisiones:**
+- Se introduce la colección `enrollments` para desacoplar la relación aprendiz↔curso de `users` (reemplaza el array `cursosInscritos` planteado originalmente en `04_DATABASE_SCHEMA.md`), con índice único `{ userId, courseId }` y campo `progreso`.
+- Se introduce la colección `documents` para rastrear el estado de procesamiento (chunking/embeddings) de cada PDF subido, antes de que sus fragmentos lleguen a `knowledgeChunks`.
+- `knowledgeChunks` ahora referencia `documentId` además de `courseId`.
+- `chatMessages` y `liveSessions` se ampliaron con más campos (`threadId`, `liveSessionId`, `remitenteId`, `rolRemitente`, `estado`, fechas de sesión, `urlReunion`) respecto al esquema simplificado que había en `04_DATABASE_SCHEMA.md`.
+- Actualizado `04_DATABASE_SCHEMA.md` y `01_ARCHITECTURE.md` para reflejar el diseño final de colecciones.
+
+**Pendiente:**
+- [ ] Crear el índice de Vector Search en MongoDB Atlas para `knowledgeChunks.embedding`.
+- [ ] Repositories que encapsulen las queries de estos modelos.
+
+---
+
 ## [Sin iniciar] — Setup inicial
 
 **Hecho:**

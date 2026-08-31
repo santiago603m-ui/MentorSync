@@ -28,7 +28,7 @@ Arquitectura por capas + modular por dominio (feature-based), tanto en backend c
 backend/
 ├── src/
 │   ├── config/              # conexión DB, variables de entorno, config Groq
-│   ├── models/               # Mongoose schemas (User, Course, KnowledgeChunk, ChatMessage, LiveSession)
+│   ├── models/               # Mongoose schemas (User, Course, Enrollment, Document, KnowledgeChunk, ChatMessage, LiveSession)
 │   ├── controllers/          # solo reciben req/res, delegan a services
 │   ├── services/
 │   │   ├── auth.service.js
