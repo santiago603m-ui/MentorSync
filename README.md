@@ -24,9 +24,14 @@ MEAN (MongoDB Atlas + Express + Angular + Node.js) · Google Gemini API · Mongo
 
 ```
 mentorsync-ai/
-├── docs/          # documentación del proyecto (fuente de verdad)
 ├── backend/       # API Express
 └── frontend/      # Angular
+1. [`00_PROJECT_CONTEXT.md`] **Empezar aquí siempre.** Contexto maestro del proyecto, reglas para IA.
+2. [`01_ARCHITECTURE.md`] — Arquitectura, patrones de diseño, estructura de carpetas.
+3. [`02_FRONTEND_GUIDELINES.md`] — Sistema de diseño glassmorphism.
+4. [`03_BACKEND_GUIDELINES.md`] — Convenciones de backend y RBAC.
+5. [`04_DATABASE_SCHEMA.md`] — Colecciones MongoDB + Vector Search.
+6. [`05_PROGRESS.md`] — Bitácora de avance (actualizar cada sprint).
 ```
 
 ## Setup rápido (a completar cuando arranques el código)
