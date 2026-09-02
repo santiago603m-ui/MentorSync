@@ -1,0 +1,31 @@
+meta {
+  name: Registro
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/cursos
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "titulo": "Curso de prueba RAG",
+    "descripcion": "Curso creado para probar el flujo de subida de PDF y el pipeline RAG",
+    "categoria": "Backend",
+    "precio": 0,
+    "duracionEstimadaHoras": 5
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+​

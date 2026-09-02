@@ -1,9 +1,9 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const chatMessageSchema = new mongoose.Schema({
   courseId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Course',
+    ref: 'Curso',
     required: true
   },
   threadId: {
@@ -16,7 +16,7 @@ const chatMessageSchema = new mongoose.Schema({
   },
   remitenteId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User' // Quién lo envió (puede ser nulo si fue el bot)
+    ref: 'Usuario' // Quién lo envió (puede ser nulo si fue el bot)
   },
   rolRemitente: {
     type: String,
@@ -29,4 +29,4 @@ const chatMessageSchema = new mongoose.Schema({
   timestamps: true // createdAt funciona como timestamp del mensaje
 });
 
-module.exports = mongoose.model('ChatMessage', chatMessageSchema);
+export default mongoose.model('ChatMessage', chatMessageSchema);

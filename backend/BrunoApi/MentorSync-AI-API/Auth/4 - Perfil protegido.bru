@@ -1,0 +1,21 @@
+meta {
+  name: 4 - Perfil protegido
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/auth/perfil-protegido
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+docs {
+  Prueba la ruta protegida con verificarToken + verificarRol.
+  Requiere correr el request 3 primero (guarda el token automáticamente).
+  Sin token válido debe devolver 401 (sin header) o 403 (token inválido/expirado).
+}

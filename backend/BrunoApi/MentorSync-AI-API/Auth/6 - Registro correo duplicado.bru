@@ -1,0 +1,29 @@
+meta {
+  name: 6 - Registro correo duplicado
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/auth/registro
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "nombre": "Otro Nombre",
+    "email": "aprendiz@mentorsync.test",
+    "contraseña": "clave12345",
+    "rol": "aprendiz"
+  }
+}
+
+docs {
+  Corre esto DESPUÉS del request 1. Debe devolver 409 con message
+  "El correo ya se encuentra registrado".
+}

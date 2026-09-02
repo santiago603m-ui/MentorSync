@@ -1,0 +1,29 @@
+meta {
+  name: 1 - Registro (aprendiz)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/auth/registro
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "nombre": "Santiago Aprendiz",
+    "email": "aprendiz@mentorsync.test",
+    "contraseña": "clave12345",
+    "rol": "aprendiz"
+  }
+}
+
+docs {
+  Registra un usuario con rol aprendiz.
+  Respuesta esperada: 201, con success:true y el usuario (sin contraseñaHash).
+}

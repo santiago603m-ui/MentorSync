@@ -1,19 +1,17 @@
-export const verificarRol = (...allowedRoles) => {
-  return (req, res, next) => {
-    if (!req.user || !req.user.rol) {
-      return res.status(401).json({
-        success: false,
-        message: 'No autorizado. Información de rol ausente.'
-      });
-    }
+import { AppError } from '../utils/AppError.js';
 
-    if (!allowedRoles.includes(req.user.rol)) {
-      return res.status(403).json({
-        success: false,
-        message: `Acceso prohibido. El rol '${req.user.rol}' no tiene permisos para este recurso.`
-      });
-    }
+/**
+ * Restringe una ruta a ciertos roles. Debe ir SIEMPRE después de verificarToken.
+ * Uso: router.post('/cursos', verificarToken, verificarRol('mentor', 'administrador'), ...)
+ */
+export const verificarRol = (...rolesPermitidos) => (req, res, next) => {
+  if (!req.usuario?.rol) {
+    return next(new AppError('No autorizado. Información de rol ausente', 401));
+  }
 
-    next();
-  };
+  if (!rolesPermitidos.includes(req.usuario.rol)) {
+    return next(new AppError(`Acceso prohibido para el rol '${req.usuario.rol}'`, 403));
+  }
+
+  next();
 };

@@ -1,0 +1,39 @@
+meta {
+  name: 3 - Inicio de sesion
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/auth/inicio-sesion
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+  "email": "mentorprueba@test.com",
+  "contraseña": "12345678"
+  }
+}
+
+vars:post-response {
+  token: res.body.data.token
+}
+
+script:post-response {
+  {
+    "email": "mentor.prueba@test.com",
+    "contraseña": "12345678"
+  }
+}
+
+docs {
+  Inicia sesión con el aprendiz creado en el request 1.
+  El script post-response guarda el token en la variable de entorno "token"
+  automáticamente, así el request 4 lo usa sin copiar/pegar nada.
+}

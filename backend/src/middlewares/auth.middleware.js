@@ -1,25 +1,25 @@
 import jwt from 'jsonwebtoken';
+import { AppError } from '../utils/AppError.js';
 
-export const VerificarToken = (req,res,next) => {
-    const authHeader = req.headers.authorization;
+const PREFIJO_TOKEN = 'Bearer ';
 
-    if (!authHeader || !authHeader.startsWith('Bearer')){
-        return res.status(401).json({
-            success: false,
-            message: 'Acceso Denegado. Token No Proporcionado O Formato Invalido'
-        });
-    }
+/**
+ * Extrae y valida el JWT del header Authorization.
+ * Si es válido, adjunta el payload decodificado en req.usuario.
+ */
+export const verificarToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
 
-    const token = authHeader.split(' ')[1];
+  if (!authHeader || !authHeader.startsWith(PREFIJO_TOKEN)) {
+    return next(new AppError('Acceso denegado. Token no proporcionado o con formato inválido', 401));
+  }
 
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded;
-        next();
-    } catch (error) {
-        return res.status(403).json({
-            success: false,
-            message: 'Token Invalido O Expirado'
-        })
-    }
+  const token = authHeader.slice(PREFIJO_TOKEN.length);
+
+  try {
+    req.usuario = jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch (error) {
+    next(new AppError('Token inválido o expirado', 403));
+  }
 };

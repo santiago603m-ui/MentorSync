@@ -1,0 +1,39 @@
+meta {
+  name: SubirDocumento
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/cursos/6a9817c466594282c4425d02/documentos
+  body: multipartForm
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "success": true,
+    "message": "Documento subido y procesado correctamente",
+    "data": {
+      "documento": { "...": "..." },
+      "vistaPrevia": {
+        "totalPaginas": 3,
+        "totalCaracteres": 5200,
+        "fragmento": "..."
+      }
+    }
+  }
+}
+
+body:multipart-form {
+  archivo: @file(c:\Users\PC_06\Desktop\MentorSync\backend\BrunoApi\MentorSync-AI-API\archivos-prueba\MentorSync-AI_Estado-del-Proyecto.pdf) @contentType(File)
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
