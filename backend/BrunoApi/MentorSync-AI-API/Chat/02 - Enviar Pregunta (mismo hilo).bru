@@ -1,0 +1,29 @@
+meta {
+  name: 02 - Enviar Pregunta (mismo hilo)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/cursos/6a9817c466594282c4425d02/chat
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "pregunta": "¿Puedes profundizar un poco más en eso?",
+    "threadId": "0b8f6521-fbd6-47f2-a27e-c93d5b852372"
+  }
+}
+
+docs {
+  Corre el request 01 primero, copia el "threadId" de la respuesta a la
+  variable de entorno {{threadId}} (Environments → Local → pegar → Save),
+  y luego corre este. Debería mantener contexto del mismo hilo de chat.
+}

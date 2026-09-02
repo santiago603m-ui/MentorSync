@@ -1,0 +1,31 @@
+meta {
+  name: 01 - Enviar Pregunta (nueva conversación)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/cursos/6a9817c466594282c4425d02/chat
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "pregunta": "¿De qué trata este curso?"
+  }
+}
+
+docs {
+  Requiere que {{cursoId}} sea un curso con estado "publicado" y que ya
+  tenga al menos un documento procesado (chunks + embeddings en knowledgechunks).
+  
+  La respuesta trae un "threadId" en data.threadId — cópialo a la variable
+  de entorno {{threadId}} para usarlo en el siguiente request y mantener
+  la conversación agrupada (mismo flujo manual que usas para {{token}}).
+}
