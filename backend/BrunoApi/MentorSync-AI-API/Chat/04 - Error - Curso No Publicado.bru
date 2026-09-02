@@ -1,0 +1,28 @@
+meta {
+  name: 04 - Error - Curso No Publicado
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/cursos/{{cursoIdBorrador}}/chat
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "pregunta": "¿De qué trata este curso?"
+  }
+}
+
+docs {
+  {{cursoIdBorrador}} debe ser el id de un curso que sigue en estado
+  "borrador". Debería devolver 403 con:
+  { "success": false, "error": { "code": "COURSE_NOT_PUBLISHED", "message": "..." } }
+}

@@ -1,0 +1,21 @@
+meta {
+  name: 03 - Obtener Historial del Hilo
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/cursos/chat/historial/{{threadId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+docs {
+  Devuelve todos los mensajes (aprendiz + bot) del threadId, en orden
+  cronológico. Útil para confirmar que ambos mensajes (pregunta y
+  respuesta del bot) se guardaron correctamente en chatmessages.
+}
