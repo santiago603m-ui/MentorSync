@@ -1,9 +1,9 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const knowledgeChunkSchema = new mongoose.Schema({
   courseId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Course',
+    ref: 'Curso',
     required: true
   },
   documentId: {
@@ -27,4 +27,4 @@ const knowledgeChunkSchema = new mongoose.Schema({
 // El índice de Vector Search sobre "embedding" se crea en MongoDB Atlas,
 // no mediante Mongoose (ver 04_DATABASE_SCHEMA.md).
 
-module.exports = mongoose.model('KnowledgeChunk', knowledgeChunkSchema);
+export default mongoose.model('KnowledgeChunk', knowledgeChunkSchema);

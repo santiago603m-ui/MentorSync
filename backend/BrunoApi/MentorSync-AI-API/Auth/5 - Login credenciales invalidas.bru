@@ -1,0 +1,28 @@
+meta {
+  name: 5 - Login credenciales invalidas
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/auth/inicio-sesion
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "aprendiz@mentorsync.test",
+    "contraseña": "clave-incorrecta"
+  }
+}
+
+docs {
+  Debe devolver 401 con message "Correo o contraseña incorrectos"
+  (el mismo mensaje que si el correo no existiera — no debe filtrar
+  cuál de los dos falló).
+}

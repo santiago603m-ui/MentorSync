@@ -1,18 +1,23 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const documentSchema = new mongoose.Schema({
   courseId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Course',
+    ref: 'Curso',
     required: true
   },
   mentorId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Usuario',
     required: true
   },
   nombreOriginal: { type: String, required: true },
-  fileUrl: { type: String, required: true },
+  fileUrl: { 
+    type: String, 
+    required: function() {
+      return this.estado !== 'pendiente';
+    } 
+  },
   tipo: {
     type: String,
     enum: ['pdf', 'txt', 'enlace'],
@@ -23,9 +28,9 @@ const documentSchema = new mongoose.Schema({
     enum: ['pendiente', 'procesando', 'completado', 'error'],
     default: 'pendiente'
   },
-  errorMessage: { type: String } // Si falla el job, se guarda el motivo aquí
+  errorMessage: { type: String }
 }, {
   timestamps: true
 });
 
-module.exports = mongoose.model('Document', documentSchema);
+export default mongoose.model('Document', documentSchema);

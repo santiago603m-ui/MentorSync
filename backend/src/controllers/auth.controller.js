@@ -1,35 +1,36 @@
 import authService from '../services/auth.service.js';
 
+/**
+ * Controller de autenticación.
+ * Regla del proyecto: el controller SOLO recibe/responde HTTP.
+ * Toda la lógica vive en authService. Ver docs/03_BACKEND_GUIDELINES.md
+ */
 class AuthController {
-  async register(req, res) {
+  async registrar(req, res, next) {
     try {
-      const user = await authService.register(req.body);
+      const usuario = await authService.registrar(req.body);
+
       return res.status(201).json({
         success: true,
-        message: 'Usuario registrado exitosamente',
-        data: user
+        message: 'Usuario registrado correctamente',
+        data: { usuario },
       });
     } catch (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      next(error);
     }
   }
 
-  async login(req, res) {
+  async iniciarSesion(req, res, next) {
     try {
-      const result = await authService.login(req.body);
+      const { token, usuario } = await authService.iniciarSesion(req.body);
+
       return res.status(200).json({
         success: true,
         message: 'Inicio de sesión exitoso',
-        data: result
+        data: { token, usuario },
       });
     } catch (error) {
-      return res.status(401).json({
-        success: false,
-        message: error.message
-      });
+      next(error);
     }
   }
 }

@@ -1,14 +1,14 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const liveSessionSchema = new mongoose.Schema({
   courseId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Course',
+    ref: 'Curso',
     required: true
   },
   mentorId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Usuario',
     required: true
   },
   titulo: { type: String, required: true },
@@ -24,10 +24,10 @@ const liveSessionSchema = new mongoose.Schema({
   transcript: { type: String }, // Opcional: si se logra grabar y transcribir luego
   asistentes: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'Usuario'
   }]
 }, {
   timestamps: true
 });
 
-module.exports = mongoose.model('LiveSession', liveSessionSchema);
+export default mongoose.model('LiveSession', liveSessionSchema);

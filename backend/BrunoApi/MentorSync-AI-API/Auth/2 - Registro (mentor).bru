@@ -1,0 +1,33 @@
+meta {
+  name: 2 - Registro (mentor)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/auth/registro
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "nombre": "Mentor de Prueba",
+    "email": "mentorprueba@test.com",
+    "contraseña": "12345678",
+    "rol": "mentor",
+    "perfilMentor": {
+      "bio": "Mentor de pruebas",
+      "especialidad": "Backend"
+    }
+  }
+}
+
+docs {
+  Registra un usuario con rol mentor. Debe devolver perfilMentor con
+  verificado:false por defecto.
+}
