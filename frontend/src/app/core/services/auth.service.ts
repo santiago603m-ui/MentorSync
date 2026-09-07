@@ -1,13 +1,11 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';7
+import { Observable } from 'rxjs';
 import { UsuarioLoginReq, UsuarioRegistroReq, AuthRespuesta } from "/MentorSync/frontend/src/app/models/auth.model";
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class AuthService {
-  private apiUrl = 'http://localhost:4000/api/auth'; // Url del Backend
+  private apiUrl = 'http://localhost:4000/api/auth';
 
   constructor(private http: HttpClient) {}
 

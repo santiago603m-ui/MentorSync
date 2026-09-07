@@ -31,7 +31,7 @@ import { Router } from '@angular/router';
 
       <label class="field">
         <span class="field-label">Contraseña</span>
-        <input [(ngModel)]="password" name="password" placeholder="Mínimo 8 caracteres" type="password" required minlength="8" />
+        <input [(ngModel)]="contrasena" name="password" placeholder="Mínimo 8 caracteres" type="password" required minlength="8" />
       </label>
 
       <label class="field">
@@ -40,16 +40,13 @@ import { Router } from '@angular/router';
       </label>
 
       <p *ngIf="errorMessage" class="error-msg">{{ errorMessage }}</p>
-
       <button type="submit" class="submit-btn">Crear cuenta</button>
     </form>
   `,
   styles: [`
     .register-form { display: flex; flex-direction: column; gap: 1.1rem; }
-
     .field { display: flex; flex-direction: column; gap: 0.4rem; }
     .field-label { font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); }
-
     input[type="text"], input[type="email"], input[type="password"] {
       padding: 0.75rem 0.9rem;
       border-radius: var(--radius-sm);
@@ -62,45 +59,18 @@ import { Router } from '@angular/router';
     }
     input::placeholder { color: var(--text-muted); }
     input:focus { border-color: var(--accent-cyan); }
-
     .role-select { display: flex; gap: 0.5rem; }
-    .role-select button {
-      flex: 1;
-      padding: 0.6rem;
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      background: var(--surface-1);
-      color: var(--text-secondary);
-      font-weight: 600;
-      font-size: 0.85rem;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    .role-select button.active {
-      background: var(--accent-gradient);
-      color: #08101c;
-      border-color: transparent;
-    }
-
-    .submit-btn {
-      background: var(--accent-gradient);
-      border: none;
-      border-radius: var(--radius-sm);
-      padding: 0.8rem;
-      color: #08101c;
-      font-weight: 700;
-      cursor: pointer;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
+    .role-select button { flex: 1; padding: 0.6rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--surface-1); color: var(--text-secondary); font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease; }
+    .role-select button.active { background: var(--accent-gradient); color: #08101c; border-color: transparent; }
+    .submit-btn { background: var(--accent-gradient); border: none; border-radius: var(--radius-sm); padding: 0.8rem; color: #08101c; font-weight: 700; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
     .submit-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(139,107,255,0.3); }
-
     .error-msg { color: var(--danger); font-size: 0.85rem; text-align: center; }
   `]
 })
 export class RegisterFormComponent {
   name = '';
   email = '';
-  password = '';
+  contrasena = '';
   confirmPassword = '';
   role = 'Aprendiz';
   errorMessage = '';
@@ -108,7 +78,7 @@ export class RegisterFormComponent {
   constructor(private authService: AuthService, private router: Router) {}
 
   onRegister() {
-    if (this.password !== this.confirmPassword) {
+    if (this.contrasena !== this.confirmPassword) {
       this.errorMessage = 'Las contraseñas no coinciden';
       return;
     }
@@ -117,12 +87,12 @@ export class RegisterFormComponent {
 
     this.authService.register({
       nombre: this.name,
-      correo: this.email,
-      contrasena: this.password,
+      email: this.email,          // 👈 corregido
+      contraseña: this.contrasena, // 👈 clave correcta para backend
       rol: this.role
     }).subscribe({
       next: () => this.router.navigate(['/login']),
-      error: err => {
+      error: (err: any) => {
         console.error('Error en registro', err);
         this.errorMessage = 'Error en el registro. Intenta nuevamente.';
       }

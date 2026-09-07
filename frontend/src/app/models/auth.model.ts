@@ -1,24 +1,25 @@
-// auth.model.ts
-
 export interface UsuarioLoginReq {
-  correo: string;
-  contrasena: string;
+  email: string;
+  contraseña: string; // 👈 clave que espera el backend
 }
 
 export interface UsuarioRegistroReq {
   nombre: string;
-  correo: string;
-  contrasena: string;
-  rol?: string; // Opcional, según lo que espere tu backend
+  email: string;
+  contraseña: string;
+  rol?: string;
 }
 
 export interface AuthRespuesta {
-  exito: boolean;
-  mensaje?: string;
-  token?: string;
-  usuario?: {
-    id: string;
-    nombre: string;
-    correo: string;
+  success: boolean;
+  message?: string;
+  data: {
+    token: string;
+    usuario: {
+      id: string;
+      nombre: string;
+      email: string;
+      rol?: string;
+    };
   };
 }
