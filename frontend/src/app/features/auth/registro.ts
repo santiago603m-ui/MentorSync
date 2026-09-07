@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from './authService';
+import { AuthService } from '../../core/services/auth.service';
 import { Router } from '@angular/router';
 
 @Component({
@@ -116,10 +116,10 @@ export class RegisterFormComponent {
     this.errorMessage = '';
 
     this.authService.register({
-      name: this.name,
-      email: this.email,
-      password: this.password,
-      role: this.role
+      nombre: this.name,
+      correo: this.email,
+      contrasena: this.password,
+      rol: this.role
     }).subscribe({
       next: () => this.router.navigate(['/login']),
       error: err => {

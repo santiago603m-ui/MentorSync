@@ -27,31 +27,35 @@ Arquitectura por capas + modular por dominio (feature-based), tanto en backend c
 ```
 backend/
 ├── src/
-│   ├── config/              # conexión DB, variables de entorno, config Groq
-│   ├── models/               # Mongoose schemas (User, Course, Enrollment, Document, KnowledgeChunk, ChatMessage, LiveSession)
-│   ├── controllers/          # solo reciben req/res, delegan a services
+│   ├── config/              # database.js, cloudinary.js, variables de entorno
+│   ├── models/               # Mongoose schemas (Usuario, Curso, Document, KnowledgeChunk, ChatMessage, LiveSession, Enrollment)
+│   ├── controllers/          # solo reciben req/res, delegan a services (auth, course, document, chat)
 │   ├── services/
 │   │   ├── auth.service.js
 │   │   ├── course.service.js
-│   │   ├── chat.service.js
+│   │   ├── document.service.js    # pipeline PDF: upload → extracción texto → chunking → embeddings
+│   │   ├── chat.service.js         # lógica de conversación con el bot (threadId, guardado de mensajes)
+│   │   ├── embedding.service.js   # @xenova/transformers (Xenova/all-MiniLM-L6-v2, LOCAL, 384D)
 │   │   └── ai/
-│   │       ├── rag.service.js         # orquesta embedding + retrieval + generación
-│   │       ├── embedding.service.js   # convierte PDF → vectores (usa @xenova/transformers, LOCAL, no llama a Groq)
+│   │       ├── rag.service.js         # orquesta retrieval ($vectorSearch) + generación (Groq)
 │   │       └── providers/
-│   │           └── groq.provider.js
-│   ├── repositories/         # acceso a datos (Mongoose queries encapsuladas)
+│   │           ├── assistant-provider.interface.js  # Strategy Pattern (clase abstracta)
+│   │           └── groq.provider.js                 # implementación con SDK de Groq
+│   ├── repositories/         # acceso a datos (auth, course, document, knowledgeChunk, chatMessage)
 │   ├── middlewares/
 │   │   ├── auth.middleware.js
 │   │   ├── role.middleware.js
+│   │   ├── validar.middleware.js
 │   │   └── error.middleware.js
-│   ├── routes/                # una carpeta/archivo por dominio
-│   ├── docs/                  # swagger-jsdoc (definiciones OpenAPI)
-│   ├── sockets/                # lógica de websockets separada de HTTP
-│   ├── validators/            # Joi/Zod
-│   ├── utils/
-│   └── jobs/                  # procesamiento async del PDF (cola de embeddings)
-├── tests/
-└── server.js
+│   ├── routes/                # auth.routes.js, course.routes.js, document.routes.js, chat.routes.js
+│   ├── validators/            # Zod v4 (auth, course, chat)
+│   ├── utils/                 # AppError.js, textChunker.js
+│   ├── sockets/               # (vacío, pendiente)
+│   ├── jobs/                  # (vacío, pendiente — procesamiento síncrono por ahora)
+│   └── server.js
+├── scripts/                   # check-setup.js, test-cloudinary.js
+├── tests/                     # (vacío, pendiente)
+└── BrunoApi/                  # colección de testing con todos los endpoints (Auth, Courses, Chat)
 ```
 
 ## Estructura de carpetas — Frontend (Angular)
@@ -76,8 +80,14 @@ frontend/src/app/
 
 ## Flujo RAG (núcleo del proyecto)
 
-1. Mentor sube PDF → job asíncrono trocea el texto (chunking) → genera embeddings localmente con @xenova/transformers → guarda vectores en `knowledgeChunks` (MongoDB Atlas Vector Search), indexados por `courseId`.
-2. Aprendiz pregunta → se embebe la pregunta → `$vectorSearch` filtrado por `courseId` trae los chunks más relevantes → se arma el prompt con contexto + pregunta → Groq (Llama) genera la respuesta.
-3. Aislar el vector store por curso evita que el bot de un mentor "alucine" con contenido de otro curso.
+**Estado actual:** ✅ Completo y funcional | 🚧 Falta solo el frontend (Angular)
 
-Ver `04_DATABASE_SCHEMA.md` para el detalle de colecciones e índice.
+1. **Ingestión (✅ implementado):** Mentor sube PDF vía `POST /api/cursos/:cursoId/documentos` → se procesa **síncronamente** dentro del mismo request: extracción de texto con `pdf-parse` → fragmentación con `textChunker.js` (chunks de 1000 caracteres, overlap de 200) → generación de embeddings localmente con `@xenova/transformers` (modelo `Xenova/all-MiniLM-L6-v2`, vectores de 384 dimensiones, CPU puro, sin GPU ni API externa) → guardado en lote en colección `knowledgechunks` de MongoDB, indexados por `courseId` → documento se marca como `completado` con la URL de Cloudinary.
+
+2. **Retrieval + Generación (✅ implementado):** Aprendiz pregunta vía `POST /api/cursos/:cursoId/chat` → se embebe la pregunta con el mismo modelo → `$vectorSearch` de MongoDB Atlas filtrado por `courseId` trae los 5 chunks más relevantes (cosine similarity, `numCandidates = limite * 20`) → se arma el prompt con contexto + pregunta + instrucciones (responder solo con base en contexto, no inventar, markdown cuando ayude) → Groq (Llama) genera la respuesta (temperatura 0.3, max 1024 tokens) → se guarda en `chatmessages` para historial → devuelve `{ threadId, respuesta, fragmentosUsados }` (con `score` y vista previa de cada fragmento).
+
+3. **Aislamiento por curso:** El filtro obligatorio `{ courseId }` en toda query `$vectorSearch` evita que el bot de un curso "alucine" con contenido de otro curso — cada curso tiene su propio vector store lógico dentro de la misma colección física.
+
+4. **Historial de conversación:** Cada hilo tiene un `threadId` (UUID v4). El aprendiz puede continuar una conversación enviando el mismo `threadId`, o crear una nueva conversación (nuevo UUID). El historial se consulta con `GET /api/cursos/chat/historial/:threadId`.
+
+Ver `04_DATABASE_SCHEMA.md` para el detalle de colecciones e índice, y `06_API_MODELS_REFERENCE.md` para el pipeline implementado método por método.

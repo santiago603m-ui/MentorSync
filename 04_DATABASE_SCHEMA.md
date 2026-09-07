@@ -1,98 +1,106 @@
 # 🗄️ Base de Datos — MongoDB Atlas
 
+> ⚠️ Este documento refleja el esquema **realmente implementado** en `backend/src/models/`. Para el detalle método por método de cada capa (repository/service/controller), ver `06_API_MODELS_REFERENCE.md`.
+
 ## Colecciones
 
-Los schemas de Mongoose viven en `backend/src/models/*.model.js`. Este documento
-describe su forma lógica; el código fuente de cada modelo es la referencia exacta
-de tipos, defaults y validaciones.
-
-### `users` (`user.model.js`)
+### `usuarios`  (modelo `Usuario`, `user.model.js`)
 ```
 _id
-nombre, email (unique), passwordHash
-rol: "aprendiz" | "mentor" | "administrador"        // default: "aprendiz"
-perfilMentor: { bio, especialidad, verificado }       // solo relevante si rol = "mentor"
-isActive: Boolean                                      // borrado lógico, default: true
-createdAt, updatedAt
-```
-> Las inscripciones a cursos ya NO se guardan como array embebido aquí — ver `enrollments`.
-
-### `courses` (`course.model.js`)
-```
-_id
-mentorId (ref → users)
-titulo, descripcion, categoria
-estado: "borrador" | "activo" | "archivado"           // default: "borrador"
-isActive: Boolean                                      // borrado lógico, default: true
+nombre, email (único), contraseñaHash   // select:false, nunca se trae por defecto
+rol: "aprendiz" | "mentor" | "administrador"   // default "aprendiz"
+perfilMentor: { bio, especialidad, verificado }   // default: undefined — solo existe si rol = "mentor"
+activo: Boolean   // default true, borrado lógico
 createdAt, updatedAt
 ```
 
-### `enrollments` (`enrollment.model.js`)
-Desacopla la relación aprendiz↔curso del documento de `users` y permite medir progreso.
+> Nota: `cursosInscritos`/`cursosCreados` como arrays embebidos en el usuario (mencionados en una versión anterior de este doc) **no se implementaron**. La relación usuario↔curso se resuelve por query (`mentor` en `cursos`, y a futuro `enrollments`), no por arrays embebidos.
+
+### `cursos`  (modelo `Curso`, `course.model.js`)
 ```
 _id
-userId (ref → users)
-courseId (ref → courses)
-estado: "activo" | "completado" | "suspendido"        // default: "activo"
-progreso: Number                                        // 0-100, default: 0
+mentor (ref → usuarios), requerido
+titulo (máx 120), descripcion (máx 2000), categoria
+portadaUrl: String | null
+estado: "borrador" | "publicado" | "archivado"   // default "borrador"
+precio: Number   // default 0, min 0
+duracionEstimadaHoras: Number   // default 0, min 0
+bot: {
+  entrenado: Boolean,              // default false
+  fechaEntrenamiento: Date | null,
+  documentoOrigenNombre: String | null,
+  totalChunks: Number              // default 0
+}
+activo: Boolean   // default true, borrado lógico
 createdAt, updatedAt
 ```
-> Índice único compuesto `{ userId: 1, courseId: 1 }` — un usuario no puede inscribirse dos veces al mismo curso.
+Índices: `{ mentor: 1 }`, `{ estado: 1 }`.
 
-### `documents` (`document.model.js`)
-Registra cada PDF subido por un mentor y el estado de su procesamiento (chunking + embeddings).
+### `enrollments`  (modelo `Enrollment`, `enrollment.model.js`) — sin repository/service todavía
 ```
 _id
-courseId (ref → courses)
-mentorId (ref → users)
-nombreOriginal, fileUrl
-tipo: "pdf" | "txt" | "enlace"                         // default: "pdf"
-estado: "pendiente" | "procesando" | "completado" | "error"   // default: "pendiente"
-errorMessage                                            // motivo si el job de procesamiento falla
+userId (ref → usuarios), requerido
+courseId (ref → cursos), requerido
+estado: "activo" | "completado" | "suspendido"   // default "activo"
+progreso: Number   // default 0, porcentaje 0-100 (sin min/max validado en el schema aún)
 createdAt, updatedAt
 ```
-> El frontend consulta `estado` para saber si el job de vectorización ya terminó antes de habilitar el bot.
+Índice único compuesto `{ userId: 1, courseId: 1 }` — un usuario no puede inscribirse dos veces al mismo curso.
 
-### `knowledgeChunks` (`knowledgeChunk.model.js`) ⭐ colección clave del RAG
+### `knowledgechunks`  ⭐ colección clave del RAG (modelo `KnowledgeChunk`, `knowledgeChunk.model.js`) — sin repository/service todavía
 ```
 _id
-courseId (ref → courses)
-documentId (ref → documents)
-texto                    // fragmento del PDF
-embedding: [Number]      // vector generado localmente con @xenova/transformers
+courseId (ref → cursos), requerido       // filtro OBLIGATORIO en toda query del bot
+documentId (ref → documents), requerido
+texto            // fragmento del documento
+embedding: [Number]   // vector de 384 dimensiones con Xenova/all-MiniLM-L6-v2
 metadata: { pagina, seccion }
 createdAt, updatedAt
 ```
 
-### `chatMessages` (`chatMessage.model.js`)
+### `documents`  (modelo `Document`, `document.model.js`) — sin repository/service todavía
 ```
 _id
-courseId (ref → courses)
-threadId                 // agrupa una sesión de conversación con el bot (indexado)
-liveSessionId (ref → liveSessions)   // nulo si es chat con el bot fuera de una sesión en vivo
-remitenteId (ref → users)            // nulo si el mensaje lo generó el bot
-rolRemitente: "aprendiz" | "mentor" | "bot"
-contenido
-esRespuestaBot: Boolean
+courseId (ref → cursos), requerido
+mentorId (ref → usuarios), requerido
+nombreOriginal, fileUrl, requeridos
+tipo: "pdf" | "txt" | "enlace"   // default "pdf"
+estado: "pendiente" | "procesando" | "completado" | "error"   // default "pendiente"
+errorMessage: String   // motivo del fallo si el job de procesamiento falla
 createdAt, updatedAt
 ```
 
-### `liveSessions` (`liveSession.model.js`)
+### `chatmessages`  (modelo `ChatMessage`, `chatMessage.model.js`) — sin repository/service todavía
 ```
 _id
-courseId (ref → courses), mentorId (ref → users)
-titulo
-estado: "programada" | "en_curso" | "finalizada" | "cancelada"   // default: "programada"
-fechaInicioProgramada, fechaInicioReal, fechaFin
-urlReunion
-transcript                // opcional, si se transcribe la sesión
-asistentes: [ObjectId] (ref → users)
+courseId (ref → cursos), requerido
+threadId: String, indexado          // agrupa una conversación con el bot
+liveSessionId (ref → LiveSession)   // null si es chat directo con el bot fuera de sesión
+remitenteId (ref → usuarios)        // null si el remitente es el bot
+rolRemitente: "aprendiz" | "mentor" | "bot", requerido
+contenido: String, requerido
+esRespuestaBot: Boolean   // default false
+createdAt, updatedAt
+```
+
+### `livesessions`  (modelo `LiveSession`, `liveSession.model.js`) — sin repository/service todavía
+```
+_id
+courseId (ref → cursos), requerido
+mentorId (ref → usuarios), requerido
+titulo, requerido
+estado: "programada" | "en_curso" | "finalizada" | "cancelada"   // default "programada"
+fechaInicioProgramada: Date, requerido
+fechaInicioReal, fechaFin: Date
+urlReunion: String
+transcript: String   // opcional, si se logra grabar y transcribir
+asistentes: [ObjectId] (ref → usuarios)
 createdAt, updatedAt
 ```
 
 ## Índice de Vector Search (Atlas)
 
-Definido sobre `knowledgeChunks`, campo `embedding`:
+Definido sobre `knowledgechunks`, campo `embedding`:
 
 ```json
 {
@@ -108,7 +116,7 @@ Definido sobre `knowledgeChunks`, campo `embedding`:
 ## Query típica del RAG
 
 ```js
-db.knowledgeChunks.aggregate([
+db.knowledgechunks.aggregate([
   {
     $vectorSearch: {
       index: "vector_index",

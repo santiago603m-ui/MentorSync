@@ -1,5 +1,46 @@
 # ⚙️ Guía de Backend — Convenciones
 
+## Módulos: ESM (no CommonJS)
+
+`backend/package.json` tiene `"type": "module"`. Todo el código del backend se escribe con `import`/`export`, nunca `require()`/`module.exports`:
+
+```js
+// ✅ correcto
+import User from '../models/user.model.js';
+export default authService;
+
+// ❌ no usar
+const User = require('../models/user.model.js');
+module.exports = authService;
+```
+
+Nota: en imports relativos de ESM en Node, la extensión `.js` es obligatoria (`'../models/user.model.js'`, no `'../models/user.model'`).
+
+## Manejo de errores
+
+Los servicios lanzan errores usando la clase `AppError` (`utils/AppError.js`), que incluye `statusCode`. Nunca `throw new Error('mensaje')` a secas — el middleware de errores centralizado necesita el código HTTP:
+
+```js
+// utils/AppError.js
+export class AppError extends Error {
+  constructor(message, statusCode) {
+    super(message);
+    this.statusCode = statusCode;
+  }
+}
+
+// en un service:
+if (usuarioExistente) {
+  throw new AppError('El correo ya se encuentra registrado', 409);
+}
+```
+
+Los controllers no traducen errores a códigos HTTP — solo hacen `try { ... } catch (error) { next(error) }`, y `middlewares/error.middleware.js` lee `error.statusCode || 500`.
+
+## Validación de input
+
+Usar `zod` en `validators/` para validar `req.body` **antes** de que llegue al service — nunca confiar en que el frontend ya validó. Un service nunca debe recibir datos sin validar del controller.
+
 ## Flujo de una request
 
 ```
@@ -103,7 +144,12 @@ No dejar endpoints nuevos sin su bloque `@openapi` — la doc de Swagger es la r
 PORT=
 MONGODB_URI=
 JWT_SECRET=
-GROQ_API_KEY=
+JWT_EXPIRES_IN=
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
 ```
 
-Antes de levantar el servidor, correr `npm run check-setup` (`scripts/check-setup.js`) para validar que todas estén presentes.
+**Nota:** `GROQ_API_KEY` se usará cuando se implemente el chatbot RAG (el SDK ya está instalado), pero no es obligatoria por ahora.
+
+Antes de levantar el servidor, correr `npm run check-setup` (`scripts/check-setup.js`) para validar que todas estén presentes. ⚠️ **El script actual está desactualizado** — valida `GROQ_API_KEY` (que ya no está en `.env.example`) pero no valida las de Cloudinary (que sí son obligatorias desde que se implementó el módulo de documentos).

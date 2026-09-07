@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from './authService';
+import { AuthService } from '../../core/services/auth.service';
 import { Router } from '@angular/router';
 
 @Component({
@@ -83,8 +83,8 @@ export class LoginFormComponent {
 
   onLogin() {
     this.authService.login({
-      email: this.email,
-      password: this.password
+      correo: this.email,
+      contrasena: this.password
     }).subscribe({
       next: response => {
         localStorage.setItem('token', response.token);

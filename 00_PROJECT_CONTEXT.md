@@ -38,12 +38,13 @@ Plataforma web de mentoría híbrida (estilo Platzi, pero diferenciada) donde:
 - **Backend:** Node.js 24.19 + Express 4.21.x
 - **Base de datos:** MongoDB Atlas (incluye **Atlas Vector Search** para el RAG — no se usa
   Pinecone, Weaviate ni otro vector store externo)
-- **IA generativa (chat/respuestas del bot):** Groq API (modelos open-weight tipo Llama, gratis y muy rápido)
-- **Embeddings (para RAG):** `@xenova/transformers` corriendo local en Node (modelo tipo `all-MiniLM-L6-v2`) — Groq NO tiene endpoint de embeddings, por eso se separan ambas piezas
-- **Tiempo real:** Socket.io (chat en vivo, notificaciones de sesión)
+- **Almacenamiento de archivos:** Cloudinary (PDFs subidos por mentores)
+- **IA generativa (chat/respuestas del bot):** Groq API (modelos open-weight tipo Llama, gratis y muy rápido) — **✅ implementado**
+- **Embeddings (para RAG):** `@xenova/transformers` corriendo local en Node (modelo `Xenova/all-MiniLM-L6-v2`, 384 dimensiones, CPU puro) — **✅ implementado**
+- **Tiempo real:** Socket.io (chat en vivo, notificaciones de sesión) — **pendiente de implementar** (el chat con el bot ya funciona vía HTTP)
 - **Seguridad backend:** `helmet`, `express-mongo-sanitize`, `express-rate-limit`, `compression`
 - **Logs:** `pino` + `pino-http` (logs estructurados en JSON, no `morgan`/`console.log`)
-- **Documentación de API:** `swagger-jsdoc` + `swagger-ui-express`, servida en `/api-docs`
+- **Documentación de API:** `swagger-jsdoc` + `swagger-ui-express`, servida en `/api-docs` — **instalado pero no montado**
 - **Renderizado de markdown del bot (frontend):** `marked` para parsear + `dompurify` para sanitizar SIEMPRE antes de insertar HTML — ver regla 7 abajo
 - **Testing frontend:** Vitest (no Karma/Jasmine)
 - **Testing backend:** Jest + Supertest + `mongodb-memory-server`
@@ -57,6 +58,7 @@ Plataforma web de mentoría híbrida (estilo Platzi, pero diferenciada) donde:
 - `03_BACKEND_GUIDELINES.md` → convenciones de código, formato de respuestas API, manejo de errores
 - `04_DATABASE_SCHEMA.md` → colecciones de MongoDB e índice de Vector Search
 - `05_PROGRESS.md` → bitácora de avance del proyecto (actualizar en cada sprint)
+- `06_API_MODELS_REFERENCE.md` → referencia técnica detallada método por método de cada capa del backend
 
 ## 5. Reglas para agentes de IA que trabajen en este repo
 
@@ -69,3 +71,5 @@ Plataforma web de mentoría híbrida (estilo Platzi, pero diferenciada) donde:
 7. **Toda respuesta del bot que se renderice en el frontend pasa primero por `marked` y LUEGO por `DOMPurify.sanitize()` antes de insertarse en el DOM.** Nunca usar `[innerHTML]` con la salida cruda de `marked` sin sanitizar — el contenido viene de un modelo de IA y no es confiable por defecto.
 8. Los logs del backend se hacen con `pino`/`pino-http`, no con `console.log` ni `morgan`.
 9. El entry point del backend es `src/server.js` (no `app.js`). Correr `npm run check-setup` verifica que las variables de entorno mínimas existan antes de levantar el servidor.
+10. El backend usa **ESM (`import`/`export`)**, nunca CommonJS (`require`/`module.exports`) — `backend/package.json` tiene `"type": "module"`.
+11. Los servicios lanzan errores con la clase `AppError` (que trae `statusCode`), nunca `Error` genérico.
