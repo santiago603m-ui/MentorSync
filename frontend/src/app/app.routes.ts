@@ -3,15 +3,17 @@ import { ResponsiveLayoutComponent } from './layouts/responsiveLayout';
 import { LoginPageComponent } from './features/auth/pages/loginPage';
 import { RegistroPageComponent } from './features/auth/pages/registroPage';
 import { HomePage } from './pages/homePage';
+import { CursosPageComponent } from './pages/cursosPage'; // 👈 importamos CursosPage
 
 export const routes: Routes = [
   {
     path: '',
     component: ResponsiveLayoutComponent,
     children: [
-      { path: '', component: HomePage}, // Ruta raíz que apunta a HomePage
+      { path: '', component: HomePage }, // Ruta raíz que apunta a HomePage
       { path: 'login', component: LoginPageComponent },
-      { path: 'registro', component: RegistroPageComponent }
+      { path: 'registro', component: RegistroPageComponent },
+      { path: 'cursos', component: CursosPageComponent } // 👈 nueva ruta
     ]
   }
 ];

@@ -10,87 +10,68 @@ import { Router } from '@angular/router';
   imports: [CommonModule, FormsModule],
   template: `
     <form (ngSubmit)="onLogin()" class="login-form">
-      <h3 class="form-title">Accede a tu cuenta</h3>
+      <label class="field">
+        <span class="field-label">Correo electrónico</span>
+        <input [(ngModel)]="email" name="email" placeholder="tucorreo@ejemplo.com" type="email" required />
+      </label>
 
-      <input [(ngModel)]="email" name="email" placeholder="Correo electrónico" type="email" />
-      <input [(ngModel)]="password" name="password" placeholder="Contraseña" type="password" />
+      <label class="field">
+        <span class="field-label">Contraseña</span>
+        <input [(ngModel)]="password" name="password" placeholder="••••••••" type="password" required />
+      </label>
 
       <div class="options">
-        <label>
+        <label class="checkbox">
           <input type="checkbox" [(ngModel)]="rememberMe" name="rememberMe" />
           Recordarme
         </label>
         <a href="#">¿Olvidaste tu contraseña?</a>
       </div>
 
-      <button type="submit" class="login-btn">LOGIN</button>
+      <button type="submit" class="submit-btn">Iniciar sesión</button>
     </form>
   `,
   styles: [`
-    .login-form {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
+    .login-form { display: flex; flex-direction: column; gap: 1.1rem; }
 
-    .form-title {
-      margin-bottom: 1rem;
-      color: var(--accent-secondary);
-      text-shadow: 0 0 10px var(--accent-secondary);
-    }
+    .field { display: flex; flex-direction: column; gap: 0.4rem; }
+    .field-label { font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); }
 
-    input {
-      padding: 0.75rem;
+    input[type="email"], input[type="password"] {
+      padding: 0.75rem 0.9rem;
       border-radius: var(--radius-sm);
-      border: 1px solid var(--glass-border);
-      background: var(--glass-bg);
-      color: var(--accent-secondary);
+      border: 1px solid var(--border-subtle);
+      background: var(--surface-1);
+      color: var(--text-primary);
       outline: none;
-      font-size: 1rem;
-      transition: 0.3s;
+      font-size: 0.95rem;
+      transition: border-color 0.2s ease;
     }
-
-    input::placeholder {
-      color: var(--accent-primary);
-    }
-
-    input:focus {
-      box-shadow: 0 0 10px var(--accent-secondary);
-      border-color: var(--accent-secondary);
-    }
+    input::placeholder { color: var(--text-muted); }
+    input:focus { border-color: var(--accent-cyan); }
 
     .options {
       display: flex;
       justify-content: space-between;
-      font-size: 0.9rem;
-      color: var(--accent-secondary);
+      align-items: center;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
     }
+    .checkbox { display: flex; align-items: center; gap: 0.4rem; }
+    .options a { color: var(--accent-cyan); text-decoration: none; }
+    .options a:hover { text-decoration: underline; }
 
-    .options a {
-      color: var(--accent-primary);
-      text-decoration: none;
-    }
-
-    .options a:hover {
-      text-decoration: underline;
-    }
-
-    .login-btn {
-      background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+    .submit-btn {
+      background: var(--accent-gradient);
       border: none;
-      border-radius: var(--radius-md);
-      padding: 0.75rem;
-      color: #fff;
-      font-weight: bold;
+      border-radius: var(--radius-sm);
+      padding: 0.8rem;
+      color: #08101c;
+      font-weight: 700;
       cursor: pointer;
-      box-shadow: 0 0 15px var(--accent-secondary);
-      transition: 0.3s;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-
-    .login-btn:hover {
-      box-shadow: 0 0 25px var(--accent-secondary);
-      transform: scale(1.05);
-    }
+    .submit-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(139,107,255,0.3); }
   `]
 })
 export class LoginFormComponent {
@@ -106,10 +87,7 @@ export class LoginFormComponent {
       password: this.password
     }).subscribe({
       next: response => {
-        console.log('Login exitoso', response);
         localStorage.setItem('token', response.token);
-
-        // 👇 Ahora redirige al HomePage
         this.router.navigate(['/']);
       },
       error: err => console.error('Error en login', err)

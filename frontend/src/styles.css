@@ -1,64 +1,175 @@
+/* =====================================================================
+   MentorSync AI — Design tokens
+   Dirección: dashboard oscuro, superficies sólidas (sin glassmorphism),
+   violeta/cian como acentos de marca. Ver README de diseño en el PR.
+   ===================================================================== */
+
 :root {
-  --glass-bg: rgba(255, 255, 255, 0.08);
-  --glass-bg-strong: rgba(255, 255, 255, 0.14);
-  --glass-border: rgba(255, 255, 255, 0.18);
-  --glass-blur: blur(16px);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  /* Superficies */
+  --bg-base: #0A0E16;
+  --bg-base-elevated: #0D1220;
+  --surface-1: #10141F;
+  --surface-2: #171D2C;
+  --surface-2-hover: #1D2438;
+  --surface-3: #202942;
 
-  --radius-sm: 8px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
+  /* Bordes */
+  --border-subtle: #232B3D;
+  --border-strong: #384260;
 
-  --accent-primary: #7C5CFF;
-  --accent-secondary: #22D3EE;
+  /* Texto */
+  --text-primary: #EDEFF7;
+  --text-secondary: #9AA3BC;
+  --text-muted: #626C87;
 
-  --bg-gradient: radial-gradient(circle at top left, #1B1035, #0B0715 70%);
+  /* Acentos de marca */
+  --accent-violet: #8B6BFF;
+  --accent-violet-dim: #6647D6;
+  --accent-cyan: #22D3EE;
+  --accent-cyan-dim: #17A8BD;
+  --accent-gradient: linear-gradient(90deg, var(--accent-violet), var(--accent-cyan));
+
+  /* Estado */
+  --danger: #FF6B6B;
+  --success: #4ADE80;
+  --warning: #FFB454;
+
+  /* Radios (jerárquicos, no un único valor para todo) */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  /* Sombra: mínima, sólo para separar capas, no para "brillar" */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.28);
+  --shadow-pop: 0 12px 40px rgba(0, 0, 0, 0.45);
+
+  /* Tipografía */
+  --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
 }
 
-/* Estilos globales */
-body {
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
   margin: 0;
-  font-family: sans-serif;
-  background: var(--bg-gradient);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Clase reutilizable para tarjetas glassmorphism */
-.glass-card {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow: var(--glass-shadow);
-  padding: 2rem;
+  padding: 0;
   width: 100%;
-  max-width: 400px;
-  color: #fff;
-}
-/* Animación global de olas */
-.wave-background::before,
-.wave-background::after {
-  content: '';
-  position: absolute;
-  width: 200%;
-  height: 200px;
-  left: -50%;
-  bottom: 0;
-  background: rgba(34, 211, 238, 0.2);
-  border-radius: 100%;
-  animation: wave 8s infinite linear;
-  z-index: 0;
+  min-height: 100%;
 }
 
-.wave-background::after {
-  animation-delay: -4s;
-  background: rgba(124, 92, 255, 0.2);
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
 }
 
-@keyframes wave {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(50%); }
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  margin: 0;
+  color: var(--text-primary);
+}
+
+p { margin: 0; }
+
+button, input, select, textarea {
+  font-family: inherit;
+}
+
+a { color: inherit; }
+
+/* Scrollbar coherente con el resto del sistema */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--bg-base);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+/* Foco visible accesible en toda la app */
+:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* =====================================================================
+   Tema Cyberpunk — se activa agregando la clase .theme-cyberpunk al <body>.
+   Sobreescribe las mismas variables, así que TODO el resto del sistema
+   (cards, botones, navbar, inputs) cambia de color automáticamente sin
+   tocar ningún componente.
+   ===================================================================== */
+body.theme-cyberpunk {
+  --bg-base: #05010D;
+  --bg-base-elevated: #0A0518;
+  --surface-1: #0E0620;
+  --surface-2: #150A2E;
+  --surface-2-hover: #1D0F3E;
+  --surface-3: #26134F;
+
+  --border-subtle: #3A1C6E;
+  --border-strong: #FF2AFB;
+
+  --text-primary: #F2E9FF;
+  --text-secondary: #B79CE8;
+  --text-muted: #7C5FB0;
+
+  --accent-violet: #FF2AFB;
+  --accent-violet-dim: #C21ED1;
+  --accent-cyan: #00FFF7;
+  --accent-cyan-dim: #00C4C4;
+  --accent-gradient: linear-gradient(90deg, var(--accent-violet), var(--accent-cyan));
+
+  --danger: #FF3860;
+  --success: #39FF9E;
+  --warning: #FFD84A;
+
+  --shadow-card: 0 0 1px rgba(255, 42, 251, 0.4), 0 8px 28px rgba(0, 0, 0, 0.55);
+  --shadow-pop: 0 0 40px rgba(0, 255, 247, 0.18), 0 16px 48px rgba(0, 0, 0, 0.6);
+
+  --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+}
+
+/* Brillo neón extra en superficies interactivas cuando el tema está activo */
+body.theme-cyberpunk {
+  transition: background 0.4s ease;
+}
+body.theme-cyberpunk .course-card,
+body.theme-cyberpunk .session-window,
+body.theme-cyberpunk .session-card {
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.25s ease;
+}
+body.theme-cyberpunk .course-card:hover,
+body.theme-cyberpunk .modal-content {
+  box-shadow: 0 0 0 1px var(--accent-cyan), 0 0 24px rgba(0, 255, 247, 0.35), 0 0 48px rgba(255, 42, 251, 0.2);
+}
+body.theme-cyberpunk .cta-primary,
+body.theme-cyberpunk .btn.accent,
+body.theme-cyberpunk .submit-btn {
+  box-shadow: 0 0 16px rgba(255, 42, 251, 0.45);
+}
+body.theme-cyberpunk .cta-primary:hover,
+body.theme-cyberpunk .btn.accent:hover,
+body.theme-cyberpunk .submit-btn:hover {
+  box-shadow: 0 0 10px rgba(0, 255, 247, 0.6), 0 0 30px rgba(255, 42, 251, 0.55);
+}
+body.theme-cyberpunk .grad-text,
+body.theme-cyberpunk .brand-accent {
+  filter: drop-shadow(0 0 10px rgba(255, 42, 251, 0.55));
+}
+body.theme-cyberpunk :focus-visible {
+  outline-color: var(--accent-violet);
+}
+
+/* Respeta preferencia de movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
