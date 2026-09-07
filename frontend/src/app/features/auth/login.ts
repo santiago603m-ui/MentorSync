@@ -87,7 +87,7 @@ export class LoginFormComponent {
       contrasena: this.password
     }).subscribe({
       next: response => {
-        localStorage.setItem('token', response.token);
+        localStorage.setItem('token', response.token || '');
         this.router.navigate(['/']);
       },
       error: err => console.error('Error en login', err)
