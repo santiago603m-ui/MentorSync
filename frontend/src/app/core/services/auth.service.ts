@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { UsuarioLoginReq, UsuarioRegistroReq, AuthRespuesta } from "/MentorSync/frontend/src/app/models/auth.model";
+import { UsuarioLoginReq, UsuarioRegistroReq, AuthRespuesta } from '../../models/auth.model';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {

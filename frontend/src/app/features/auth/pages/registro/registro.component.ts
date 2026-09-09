@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '../../core/services/auth.service';
+import { AuthService } from '../../../../core/services/auth.service';
 import { Router } from '@angular/router';
 
 @Component({
@@ -23,9 +23,9 @@ import { Router } from '@angular/router';
       <div class="field">
         <span class="field-label">Quiero unirme como</span>
         <div class="role-select">
-          <button type="button" [class.active]="role === 'Aprendiz'" (click)="role = 'Aprendiz'">Aprendiz</button>
-          <button type="button" [class.active]="role === 'Mentor'" (click)="role = 'Mentor'">Mentor</button>
-          <button type="button" [class.active]="role === 'Administrador'" (click)="role = 'Administrador'">Admin</button>
+          <button type="button" [class.active]="role === 'aprendiz'" (click)="role = 'aprendiz'">Aprendiz</button>
+          <button type="button" [class.active]="role === 'mentor'" (click)="role = 'mentor'">Mentor</button>
+          <button type="button" [class.active]="role === 'administrador'" (click)="role = 'administrador'">Admin</button>
         </div>
       </div>
 
@@ -72,7 +72,7 @@ export class RegisterFormComponent {
   email = '';
   contrasena = '';
   confirmPassword = '';
-  role = 'Aprendiz';
+  role = 'aprendiz';
   errorMessage = '';
 
   constructor(private authService: AuthService, private router: Router) {}
@@ -87,8 +87,8 @@ export class RegisterFormComponent {
 
     this.authService.register({
       nombre: this.name,
-      email: this.email,          // 👈 corregido
-      contraseña: this.contrasena, // 👈 clave correcta para backend
+      email: this.email,
+      contraseña: this.contrasena,
       rol: this.role
     }).subscribe({
       next: () => this.router.navigate(['/login']),

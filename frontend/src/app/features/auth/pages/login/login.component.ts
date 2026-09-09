@@ -1,9 +1,9 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '../../core/services/auth.service';
 import { Router } from '@angular/router';
-import { AuthRespuesta } from '../../models/auth.model';
+import { AuthService } from '../../../../core/services/auth.service';
+import { AuthRespuesta } from '../../../../models/auth.model';
 
 @Component({
   selector: 'app-login-form',
@@ -18,7 +18,7 @@ import { AuthRespuesta } from '../../models/auth.model';
 
       <label class="field">
         <span class="field-label">Contraseña</span>
-        <input [(ngModel)]="contrasena" name="contraseña" placeholder="••••••••" type="password" required />
+        <input [(ngModel)]="contrasena" name="contrasena" placeholder="••••••••" type="password" required />
       </label>
 
       <div class="options">
@@ -28,6 +28,7 @@ import { AuthRespuesta } from '../../models/auth.model';
         <a href="#">¿Olvidaste tu contraseña?</a>
       </div>
 
+      <p *ngIf="errorMessage" class="error-msg">{{ errorMessage }}</p>
       <button type="submit" class="submit-btn">Iniciar sesión</button>
     </form>
   `,
@@ -65,22 +66,29 @@ import { AuthRespuesta } from '../../models/auth.model';
       transform: translateY(-1px);
       box-shadow: 0 8px 20px rgba(139,107,255,0.3);
     }
+    .error-msg { color: var(--danger); font-size: 0.85rem; text-align: center; }
   `]
 })
 export class LoginFormComponent {
   email = '';
   contrasena = '';
   rememberMe = false;
+  errorMessage = '';
 
   constructor(private authService: AuthService, private router: Router) {}
 
   onLogin() {
+    this.errorMessage = '';
+
     this.authService.login({ email: this.email, contraseña: this.contrasena }).subscribe({
       next: (response: AuthRespuesta) => {
         localStorage.setItem('token', response.data.token);
         this.router.navigate(['/']);
       },
-      error: (err: any) => console.error('Error en login', err)
+      error: (err: any) => {
+        console.error('Error en login', err);
+        this.errorMessage = 'Credenciales incorrectas. Verifica tu correo y contraseña.';
+      }
     });
   }
 }

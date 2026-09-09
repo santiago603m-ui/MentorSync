@@ -1,8 +1,8 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { LoginFormComponent } from './login';
-import { GlassCardComponent } from '../../shared/components/glassCard';
+import { LoginFormComponent } from '../../pages/login/login.component';
+import { GlassCardComponent } from '../../../../shared/components/glass-card/glass-card.component';
 
 @Component({
   selector: 'app-login-card',

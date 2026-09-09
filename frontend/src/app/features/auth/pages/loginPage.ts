@@ -1,13 +1,15 @@
 import { Component, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LoginCardComponent } from '../loginCards';
+import { LoginCardComponent } from '../components/login-cards/login-cards.component';
 import gsap from 'gsap';
+import { NavbarComponent } from '../../../layouts/navbar/navbar.component';
 
 @Component({
   selector: 'app-login-page',
   standalone: true,
-  imports: [CommonModule, LoginCardComponent],
+  imports: [CommonModule, LoginCardComponent, NavbarComponent],
   template: `
+  <app-navbar></app-navbar>
     <div class="login-page">
       <div class="info-section">
         <h1>Bienvenido de nuevo a<br><span class="grad-text">MentorSync AI</span></h1>
