@@ -1,4 +1,6 @@
+import mongoose from 'mongoose';
 import cursoService from '../services/course.service.js';
+import Usuario from '../models/user.model.js'; // 👈 importa tu modelo de usuario
 
 class CourseController {
   async crearCurso(req, res, next) {
@@ -39,6 +41,90 @@ class CourseController {
       });
     } catch (error) {
       next(error);
+    }
+  }
+
+  async inscribirCurso(req, res) {
+    try {
+      const cursoId = req.params.id;
+
+      // 👇 Validar que el ID sea un ObjectId válido
+      if (!mongoose.Types.ObjectId.isValid(cursoId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de curso inválido',
+          data: null,
+        });
+      }
+
+      const usuarioId = req.usuario.id; // viene del token
+
+      // 👇 Buscar datos del usuario (nombre y correo)
+      const usuario = await Usuario.findById(usuarioId).select('nombre email');
+      if (!usuario) {
+        return res.status(404).json({
+          success: false,
+          message: 'Usuario no encontrado',
+          data: null,
+        });
+      }
+
+      // 👇 Pasar también nombre y correo al service
+      const curso = await cursoService.inscribirAprendiz(cursoId, {
+        id: usuarioId,
+        nombre: usuario.nombre,
+        correo: usuario.email,
+      });
+
+      if (!curso) {
+        return res.status(404).json({
+          success: false,
+          message: 'Curso no encontrado',
+          data: null,
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Inscripción exitosa',
+        data: { curso, aprendiz: usuario },
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({
+        success: false,
+        message: 'Error al inscribirse',
+        data: null,
+      });
+    }
+  }
+  async cancelarInscripcion(req, res) {
+    try {
+      const cursoId = req.params.id;
+      const inscritoId = req.params.inscritoId; // 👈 viene del array
+
+      const curso = await cursoService.cancelarInscripcion(cursoId, inscritoId);
+
+      if (!curso) {
+        return res.status(404).json({
+          success: false,
+          message: 'Curso o inscripción no encontrada',
+          data: null,
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Inscripción cancelada',
+        data: { curso },
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({
+        success: false,
+        message: 'Error al cancelar inscripción',
+        data: null,
+      });
     }
   }
 
@@ -88,6 +174,19 @@ class CourseController {
         success: true,
         message: 'Curso eliminado correctamente',
         data: null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async generarEstructura(req, res, next) {
+    try {
+      const curso = await cursoService.generarEstructuraCurso(req.params.id, req.usuario.id);
+      return res.status(200).json({
+        success: true,
+        message: 'Estructura del curso generada con éxito',
+        data: { curso },
       });
     } catch (error) {
       next(error);

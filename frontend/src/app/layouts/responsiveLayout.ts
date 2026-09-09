@@ -24,12 +24,22 @@ import { ThemeService } from '../shared/services/themeService';
     </div>
   `,
   styles: [`
+    :host {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
     .layout-container {
       display: flex;
       flex-direction: column;
+      width: 100%;
+      height: 100%;
       min-height: 100vh;
       position: relative;
       background: var(--bg-base);
+      overflow: hidden;
     }
 
     .constellation-bg {
@@ -42,32 +52,38 @@ import { ThemeService } from '../shared/services/themeService';
       pointer-events: none;
     }
 
+    /* Ocupa todo el espacio restante entre Navbar y Footer */
     .layout-content {
       flex: 1;
       width: 100%;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       position: relative;
       z-index: 1;
+      overflow: hidden; /* Permite scroll interno si la página lo requiere */
     }
 
+    /* Expande el contenedor interno al 100% sin restricción de max-width */
     .page-wrapper {
       width: 100%;
-      max-width: 1300px;
+      height: 100%;
+      max-width: 100%; /* Cambiado de 1300px a 100% */
       display: flex;
-      justify-content: center;
-      padding: 0 1.5rem;
+      flex-direction: column;
+      flex: 1;
+      padding: 0; /* Removido el padding lateral para control total en la vista */
     }
 
     .site-footer {
       text-align: center;
-      padding: 1.25rem;
+      padding: 0.75rem 1.25rem;
       background: var(--surface-1);
       border-top: 1px solid var(--border-subtle);
       color: var(--text-muted);
       position: relative;
       z-index: 1;
       font-size: 0.82rem;
+      flex-shrink: 0; /* Impide que el footer se reduzca o tape vistas */
     }
   `]
 })

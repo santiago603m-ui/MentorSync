@@ -44,26 +44,76 @@ import { Router } from '@angular/router';
     </form>
   `,
   styles: [`
-    .register-form { display: flex; flex-direction: column; gap: 1.1rem; }
-    .field { display: flex; flex-direction: column; gap: 0.4rem; }
-    .field-label { font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); }
+    .register-form { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 0.75rem; /* Reducido de 1.1rem a 0.75rem */
+    }
+    
+    .field { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 0.25rem; 
+    }
+
+    .field-label { 
+      font-size: 0.8rem; 
+      font-weight: 600; 
+      color: var(--text-secondary); 
+    }
+
     input[type="text"], input[type="email"], input[type="password"] {
-      padding: 0.75rem 0.9rem;
+      padding: 0.55rem 0.8rem; /* Reducido de 0.75rem a 0.55rem */
       border-radius: var(--radius-sm);
       border: 1px solid var(--border-subtle);
       background: var(--surface-1);
       color: var(--text-primary);
       outline: none;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       transition: border-color 0.2s ease;
     }
+
     input::placeholder { color: var(--text-muted); }
     input:focus { border-color: var(--accent-cyan); }
+
     .role-select { display: flex; gap: 0.5rem; }
-    .role-select button { flex: 1; padding: 0.6rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--surface-1); color: var(--text-secondary); font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease; }
-    .role-select button.active { background: var(--accent-gradient); color: #08101c; border-color: transparent; }
-    .submit-btn { background: var(--accent-gradient); border: none; border-radius: var(--radius-sm); padding: 0.8rem; color: #08101c; font-weight: 700; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
-    .submit-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(139,107,255,0.3); }
+
+    .role-select button { 
+      flex: 1; 
+      padding: 0.5rem; 
+      border: 1px solid var(--border-subtle); 
+      border-radius: var(--radius-sm); 
+      background: var(--surface-1); 
+      color: var(--text-secondary); 
+      font-weight: 600; 
+      font-size: 0.82rem; 
+      cursor: pointer; 
+      transition: all 0.2s ease; 
+    }
+
+    .role-select button.active { 
+      background: var(--accent-gradient); 
+      color: #08101c; 
+      border-color: transparent; 
+    }
+
+    .submit-btn { 
+      background: var(--accent-gradient); 
+      border: none; 
+      border-radius: var(--radius-sm); 
+      padding: 0.7rem; 
+      color: #08101c; 
+      font-weight: 700; 
+      cursor: pointer; 
+      margin-top: 0.4rem;
+      transition: transform 0.2s ease, box-shadow 0.2s ease; 
+    }
+
+    .submit-btn:hover { 
+      transform: translateY(-1px); 
+      box-shadow: 0 8px 20px rgba(139,107,255,0.3); 
+    }
+
     .error-msg { color: var(--danger); font-size: 0.85rem; text-align: center; }
   `]
 })
@@ -87,8 +137,8 @@ export class RegisterFormComponent {
 
     this.authService.register({
       nombre: this.name,
-      email: this.email,          // 👈 corregido
-      contraseña: this.contrasena, // 👈 clave correcta para backend
+      email: this.email,
+      contraseña: this.contrasena,
       rol: this.role
     }).subscribe({
       next: () => this.router.navigate(['/login']),

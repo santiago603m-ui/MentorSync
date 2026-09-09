@@ -28,6 +28,8 @@ import { AuthRespuesta } from '../../models/auth.model';
         <a href="#">¿Olvidaste tu contraseña?</a>
       </div>
 
+      <p class="error-msg" *ngIf="errorMsg">{{ errorMsg }}</p>
+
       <button type="submit" class="submit-btn">Iniciar sesión</button>
     </form>
   `,
@@ -47,6 +49,7 @@ import { AuthRespuesta } from '../../models/auth.model';
     }
     input::placeholder { color: var(--text-muted); }
     input:focus { border-color: var(--accent-cyan); }
+    .error-msg { color: #ff6b6b; font-size: 0.85rem; margin: -0.5rem 0 0; }
     .options { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-secondary); }
     .checkbox { display: flex; align-items: center; gap: 0.4rem; }
     .options a { color: var(--accent-cyan); text-decoration: none; }
@@ -71,16 +74,28 @@ export class LoginFormComponent {
   email = '';
   contrasena = '';
   rememberMe = false;
+  errorMsg = '';
 
   constructor(private authService: AuthService, private router: Router) {}
 
   onLogin() {
+    this.errorMsg = '';
     this.authService.login({ email: this.email, contraseña: this.contrasena }).subscribe({
       next: (response: AuthRespuesta) => {
-        localStorage.setItem('token', response.data.token);
-        this.router.navigate(['/']);
+        // Guardar sesión (token, rol y datos del usuario)
+        this.authService.guardarSesion(response);
+
+        // Redirigir según el rol definido en el login
+        this.router.navigate([this.authService.rutaSegunRol(response.data.usuario.rol)]);
       },
-      error: (err: any) => console.error('Error en login', err)
+      error: (err: any) => {
+        console.error('Error en login', err);
+        if (err.status === 0) {
+          this.errorMsg = 'No se pudo conectar con el servidor. ¿Está corriendo el backend?';
+        } else {
+          this.errorMsg = err.error?.message || 'Correo o contraseña incorrectos.';
+        }
+      }
     });
   }
 }
