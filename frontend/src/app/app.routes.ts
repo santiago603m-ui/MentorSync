@@ -4,7 +4,6 @@ import { LoginPageComponent } from './features/auth/pages/loginPage';
 import { RegistroPageComponent } from './features/auth/pages/registroPage';
 import { HomePage } from './features/home/pages/home-page/home-page.component';
 import { CursosPageComponent } from './features/courses/pages/cursos-page/cursos-page.component';
-import { NavbarComponent } from '../app/layouts/navbar//navbar.component';
 import { VantaBackgroundComponent } from './shared/components/vanta-background/vanta-background.component';
 
 export const routes: Routes = [
