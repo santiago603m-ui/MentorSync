@@ -1,8 +1,8 @@
 import { Component, AfterViewInit, ElementRef, ViewChild, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
-import { NavbarComponent } from './navbar';
-import { ThemeService } from '../shared/services/themeService';
+import { NavbarComponent } from '../navbar/navbar.component';
+import { ThemeService } from '../../shared/services/theme.service';
 
 @Component({
   selector: 'app-responsive-layout',
@@ -129,8 +129,8 @@ export class ResponsiveLayoutComponent implements AfterViewInit, OnDestroy {
 
   private resizeCanvas = () => {
     const canvas = this.canvasRef.nativeElement;
-    canvas.width = canvas.clientWidth;
-    canvas.height = canvas.clientHeight;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
   };
 
   private animate = () => {

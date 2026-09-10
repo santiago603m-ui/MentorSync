@@ -1,19 +1,20 @@
 import { Routes } from '@angular/router';
-import { ResponsiveLayoutComponent } from './layouts/responsiveLayout';
+import { ResponsiveLayoutComponent } from './layouts/responsive-layout/responsive-layout.component';
 import { LoginPageComponent } from './features/auth/pages/loginPage';
 import { RegistroPageComponent } from './features/auth/pages/registroPage';
-import { HomePage } from './pages/homePage';
-import { CursosPageComponent } from './pages/cursos/cursos-page.component';
-// Importa al loguear de acuerdo a su respectivo rol.
 import { AprendizPageComponent } from './features/Aprendiz/aprendiz-page.component';
 import { MentorPageComponent } from './features/mentor/mentorPage';
 import { AdminPageComponent } from './features/admin-panel/adminPage';
 import { roleGuard } from './core/guards/role.guard';
+import { HomePage } from './features/home/pages/home-page/home-page.component';
+import { CursosPageComponent } from './features/courses/pages/cursos-page/cursos-page.component';
+import { NavbarComponent } from '../app/layouts/navbar//navbar.component';
+import { VantaBackgroundComponent } from './shared/components/vanta-background/vanta-background.component';
 
 export const routes: Routes = [
   {
     path: '',
-    component: ResponsiveLayoutComponent,
+    component: VantaBackgroundComponent,
     children: [
       { path: '', component: HomePage },
       { path: 'login', component: LoginPageComponent },

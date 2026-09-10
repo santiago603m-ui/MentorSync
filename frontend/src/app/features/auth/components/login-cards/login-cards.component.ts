@@ -1,8 +1,8 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { LoginFormComponent } from './login';
-import { GlassCardComponent } from '../../shared/components/glassCard';
+import { LoginFormComponent } from '../../pages/login/login.component';
+import { GlassCardComponent } from '../../../../shared/components/glass-card/glass-card.component';
 
 @Component({
   selector: 'app-login-card',
@@ -28,22 +28,28 @@ import { GlassCardComponent } from '../../shared/components/glassCard';
     .login-card { display: block; margin: 0 auto; }
 
     .circle-avatar {
-      width: 64px;
-      height: 64px;
+      width: 56px; /* Ajuste sutil de tamaño para compactar alto */
+      height: 56px;
       border-radius: 50%;
-      margin: 0 auto 1.25rem auto;
+      margin: 0 auto 0.75rem auto;
       display: flex;
       align-items: center;
       justify-content: center;
       background: var(--surface-1);
       border: 1px solid var(--border-subtle);
     }
-    .circle-avatar svg { width: 55%; height: 55%; color: var(--accent-violet); }
+    
+    .circle-avatar svg { 
+      width: 55%; 
+      height: 55%; 
+      color: var(--accent-violet); 
+    }
 
     h2 {
       text-align: center;
-      margin-bottom: 1.5rem;
-      font-size: 1.3rem;
+      margin-bottom: 1rem;
+      font-size: 1.25rem;
+      color: var(--text-primary, #ffffff);
     }
 
     .register-link {
@@ -62,6 +68,12 @@ import { GlassCardComponent } from '../../shared/components/glassCard';
       padding: 0;
       margin-left: 0.3rem;
       font-size: 0.88rem;
+      transition: opacity 0.2s ease;
+    }
+    
+    .login-btn-link:hover { 
+      text-decoration: underline; 
+      opacity: 0.85;
     }
     .register-btn:hover { text-decoration: underline; }
   `]

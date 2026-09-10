@@ -1,13 +1,15 @@
 import { Component, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RegisterCardComponent } from '../registroCards';
+import { RegisterCardComponent } from '../components/registro-cards/registro-cards.component';
 import gsap from 'gsap';
+import { NavbarComponent } from '../../../layouts/navbar/navbar.component';
 
 @Component({
   selector: 'app-registro-page',
   standalone: true,
-  imports: [CommonModule, RegisterCardComponent],
+  imports: [CommonModule, RegisterCardComponent, NavbarComponent],
   template: `
+  <app-navbar></app-navbar>
     <div class="registro-page">
       <div class="info-section">
         <h1>Aprende con mentores reales.<br><span class="grad-text">Sigue con su IA.</span></h1>

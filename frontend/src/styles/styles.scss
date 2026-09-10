@@ -7,7 +7,7 @@ html, body {
   width: 100%;
   background: var(--bg-gradient); /* 👈 usa el token */
   font-family: 'Segoe UI', sans-serif;
-  color: var(--accent-secondary);
+  color: var(--text-primary); /* antes: var(--accent-secondary), salía todo el texto en cian */
 }
 
 * {

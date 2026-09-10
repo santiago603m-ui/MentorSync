@@ -1,5 +1,7 @@
 // Tokens de diseño glassmorphism — ver docs/02_FRONTEND_GUIDELINES.md
+// Este archivo SOLO define variables y clases reutilizables.
 // No dupliques estos valores en otros archivos; impórtalos desde aquí.
+// La aplicación real a html/body vive en styles.scss, no aquí.
 
 :root {
   --glass-bg: rgba(255, 255, 255, 0.08);
@@ -13,18 +15,11 @@
   --radius-lg: 24px;
 
   --accent-primary: #7C5CFF;   // violeta MentorSync
-  --accent-secondary: #22D3EE; // azul neón MentorSync
+  --accent-secondary: #22D3EE; // azul neón MentorSync — úsalo como ACENTO puntual, no como color de texto general
+
+  --text-primary: #ffffff;
 
   --bg-gradient: radial-gradient(circle at top left, #1B1035, #0B0715 70%);
-}
-
-/* Fondo global */
-body {
-  margin: 0;
-  min-height: 100vh;
-  background: var(--bg-gradient);
-  font-family: 'Segoe UI', sans-serif;
-  color: #fff;
 }
 
 /* Clase reutilizable para tarjetas glassmorphism */
@@ -38,5 +33,5 @@ body {
   padding: 2rem;
   max-width: 400px;
   margin: auto;
-  color: var(--accent-secondary);
+  color: var(--text-primary);
 }
