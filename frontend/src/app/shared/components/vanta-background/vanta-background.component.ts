@@ -5,25 +5,30 @@ import {
   OnDestroy, 
   ViewChild, 
   PLATFORM_ID, 
-  inject, 
+  inject 
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { RouterOutlet } from '@angular/router'; // 1. Importa RouterOutlet
+import { RouterOutlet } from '@angular/router';
+import { NavbarComponent } from '../../../layouts/navbar/navbar.component'; // Verifica la ruta de importación
 
 @Component({
   selector: 'app-vanta-background',
   standalone: true,
-  imports: [RouterOutlet], // 2. Agrégalo a los imports del componente standalone
+  imports: [RouterOutlet, NavbarComponent],
   template: `
     <div #vantaRef class="vanta-bg"></div>
-    <!-- 3. Añade el outlet para que los hijos aparezcan encima del fondo -->
-    <router-outlet></router-outlet>
+    <div class="vanta-content">
+      <app-navbar></app-navbar>
+      <main class="page-container">
+        <router-outlet></router-outlet>
+      </main>
+    </div>
   `,
   styles: [`
     .vanta-bg {
       position: fixed;
       inset: 0;
-      z-index: -1;
+      z-index: 0;
       width: 100%;
       height: 100%;
       background: var(--bg-gradient, radial-gradient(circle at top left, #1B1035, #0B0715 70%));
@@ -32,6 +37,21 @@ import { RouterOutlet } from '@angular/router'; // 1. Importa RouterOutlet
     }
     .vanta-bg.is-ready {
       opacity: 1;
+    }
+    .vanta-content {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .page-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding-top: 5rem; /* Evita que el Navbar solape los formularios */
     }
   `],
 })

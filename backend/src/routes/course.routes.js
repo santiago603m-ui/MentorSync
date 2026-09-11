@@ -31,6 +31,22 @@ router.post(
   validar(esquemaCrearCurso),
   courseController.crearCurso
 );
+
+// ==========================================
+// NUEVA RUTA AGREGADA (Generar estructura con IA)
+// ==========================================
+router.post(
+  '/:id/generar-estructura',
+  verificarToken,
+  verificarRol('mentor'),
+  courseController.generarEstructura
+);
+router.post(
+  '/:id/inscribir',
+  verificarToken,
+  courseController.inscribirCurso // 👈 asegúrate de crear este método en el controlador
+);
+
 router.patch(
   '/:id',
   verificarToken,
@@ -46,5 +62,6 @@ router.patch(
   courseController.cambiarEstadoCurso
 );
 router.delete('/:id', verificarToken, verificarRol('mentor'), courseController.eliminarCurso);
+router.delete('/:id/inscritos/:inscritoId', verificarToken, verificarRol('aprendiz'), courseController.cancelarInscripcion);
 
 export default router;

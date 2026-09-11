@@ -1,0 +1,74 @@
+<div class="workspace-container">
+  <main class="content-viewport">
+    <!-- Módulo Cursos -->
+    <div *ngIf="activeModule === 'cursos'" class="module-section animate-fade">
+      <div class="card cosmic-card">
+        <div class="card-header">
+          <h2><i class="fa-solid fa-layer-group"></i> Catálogo de Cursos Disponibles</h2>
+          <input type="text" placeholder="Buscar curso..." [(ngModel)]="searchCurso" class="search-input" />
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nombre del Curso</th>
+                  <th>Instructor</th>
+                  <th class="text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- 👇 Usamos trackById definido en el TS -->
+                <tr *ngFor="let curso of cursos | filter:searchCurso; trackBy: trackById">
+                  <td><strong>{{ curso.titulo }}</strong></td>
+                  <td>{{ curso.mentor?.nombre || 'Sin mentor asignado' }}</td>
+                  <td class="text-right">
+                    <!-- Si el usuario NO está inscrito -->
+                    <!-- Si el curso NO tiene inscritos -->
+                    <button *ngIf="!curso.inscritos || curso.inscritos.length === 0" class="btn-action"
+                      (click)="inscribir(curso._id)">
+                      Inscribirse
+                    </button>
+
+                    <!-- Si el curso YA tiene inscritos -->
+                    <button *ngIf="curso.inscritos && curso.inscritos.length > 0" class="btn-cancel"
+                      (click)="cancelarInscripcion(curso._id, curso.inscritos[0]._id)">
+                      Cancelar inscripción
+                    </button>
+                  </td>
+                </tr>
+
+                <!-- Mensaje si no hay cursos -->
+                <tr *ngIf="cursos.length === 0">
+                  <td colspan="3" class="empty-state">No se encontraron cursos.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Navbar derecha (igual que antes) -->
+  <aside class="internal-right-navbar cosmic-glass">
+    <div class="navbar-header">
+      <div class="nav-logo-icon">
+        <i class="fa-solid fa-satellite"></i>
+      </div>
+      <span class="nav-title">Módulos</span>
+    </div>
+
+    <nav class="nav-menu">
+      <button [class.active]="activeModule === 'dashboard'" (click)="activeModule = 'dashboard'" class="nav-item">
+        <i class="fa-solid fa-chart-pie"></i>
+        <span>Dashboard</span>
+      </button>
+
+      <button [class.active]="activeModule === 'cursos'" (click)="activeModule = 'cursos'" class="nav-item">
+        <i class="fa-solid fa-book-open"></i>
+        <span>Cursos</span>
+      </button>
+    </nav>
+  </aside>
+</div>

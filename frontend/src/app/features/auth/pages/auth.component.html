@@ -1,0 +1,141 @@
+<div class="auth-wrapper">
+  <div class="auth-container">
+    
+    <!-- LADO IZQUIERDO: SECCIÓN DE MARCA -->
+    <div class="brand-section">
+      <div class="uiverse-badge">
+        <span class="pulse-dot"></span> MentorSync AI Ecosystem
+      </div>
+
+      <h1 class="brand-title">
+        Potencia tu aprendizaje con <span class="gradient-text">Mentores e IA</span>
+      </h1>
+
+      <p class="brand-description">
+        Accede a tu panel personalizado, conecta con mentores expertos y acelera tu carrera técnica.
+      </p>
+
+      <div class="features-list">
+        <div class="feature-card">
+          <div class="icon-box">🚀</div>
+          <div>
+            <strong>Rutas Adaptativas</strong>
+            <p>Planes guiados según tus metas reales.</p>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <div class="icon-box">🤖</div>
+          <div>
+            <strong>Asistente IA 24/7</strong>
+            <p>Resolución de dudas de código al instante.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LADO DERECHO: CONTENEDOR 3D FLIP CARD -->
+    <div class="flip-card-container" [class.flipped]="isFlipped">
+      <div class="flip-card-inner">
+
+        <!-- ================= FRENTE: LOGIN ================= -->
+        <div class="flip-card-front">
+          <div class="box">
+            <span></span>
+            <div class="content">
+              <div class="card-header">
+                <h2>Bienvenido</h2>
+                <p>Ingresa tus credenciales para continuar</p>
+              </div>
+
+              <form (ngSubmit)="onLogin()" class="auth-form">
+                <div class="input-group">
+                  <input id="emailLogin" type="email" [(ngModel)]="emailLogin" name="emailLogin" class="uiverse-input" placeholder=" " required />
+                  <label for="emailLogin" class="user-label">Correo electrónico</label>
+                </div>
+
+                <div class="input-group">
+                  <input id="contrasenaLogin" type="password" [(ngModel)]="contrasenaLogin" name="contrasenaLogin" class="uiverse-input" placeholder=" " required />
+                  <label for="contrasenaLogin" class="user-label">Contraseña</label>
+                </div>
+
+                <div class="options-row">
+                  <label class="uiverse-checkbox">
+                    <input type="checkbox" [(ngModel)]="rememberMe" name="rememberMe" />
+                    <span class="checkmark"></span>
+                    <span class="label-text">Recordarme</span>
+                  </label>
+                  <a href="#" class="forgot-link">¿Olvidaste tu clave?</a>
+                </div>
+
+                <p *ngIf="loginError" class="error-msg">{{ loginError }}</p>
+
+                <button type="submit" class="uiverse-btn">
+                  <span>Iniciar sesión</span>
+                </button>
+              </form>
+
+              <div class="card-footer">
+                <p>¿No tienes una cuenta? <button type="button" class="link-btn" (click)="toggleFlip()">Regístrate aquí</button></p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= REVERSO: REGISTRO ================= -->
+        <div class="flip-card-back">
+          <div class="box">
+            <span></span>
+            <div class="content">
+              <div class="card-header">
+                <h2>Crear Cuenta</h2>
+                <p>Selecciona tu rol e ingresa tus datos</p>
+              </div>
+
+              <form (ngSubmit)="onRegister()" class="auth-form">
+                <div class="role-tabs">
+                  <button type="button" [class.active]="rol === 'aprendiz'" (click)="rol = 'aprendiz'">Aprendiz</button>
+                  <button type="button" [class.active]="rol === 'mentor'" (click)="rol = 'mentor'">Mentor</button>
+                  <button type="button" [class.active]="rol === 'administrador'" (click)="rol = 'administrador'">Admin</button>
+                </div>
+
+                <div class="input-group">
+                  <input id="nombreRegistro" type="text" [(ngModel)]="nombreRegistro" name="nombreRegistro" class="uiverse-input" placeholder=" " required />
+                  <label for="nombreRegistro" class="user-label">Nombre completo</label>
+                </div>
+
+                <div class="input-group">
+                  <input id="emailRegistro" type="email" [(ngModel)]="emailRegistro" name="emailRegistro" class="uiverse-input" placeholder=" " required />
+                  <label for="emailRegistro" class="user-label">Correo electrónico</label>
+                </div>
+
+                <div class="input-group">
+                  <input id="contrasenaRegistro" type="password" [(ngModel)]="contrasenaRegistro" name="contrasenaRegistro" class="uiverse-input" placeholder=" " required minlength="8" />
+                  <label for="contrasenaRegistro" class="user-label">Contraseña (mín. 8)</label>
+                </div>
+
+                <div class="input-group">
+                  <input id="confirmPassword" type="password" [(ngModel)]="confirmPassword" name="confirmPassword" class="uiverse-input" placeholder=" " required />
+                  <label for="confirmPassword" class="user-label">Confirma tu contraseña</label>
+                </div>
+
+                <p *ngIf="registroError" class="error-msg">{{ registroError }}</p>
+                <p *ngIf="registroExito" class="success-msg">{{ registroExito }}</p>
+
+                <button type="submit" class="uiverse-btn">
+                  <span>Crear mi cuenta</span>
+                </button>
+              </form>
+
+              <div class="card-footer">
+                <p>¿Ya tienes cuenta? <button type="button" class="link-btn" (click)="toggleFlip()">Inicia sesión</button></p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
