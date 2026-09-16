@@ -1,35 +1,39 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { Subject, takeUntil } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { AuthRespuesta } from '../../../models/auth.model';
+import { VantaBackgroundComponent } from '../../../shared/components/vanta-background/vanta-background.component';
 
 @Component({
   selector: 'app-auth',
   standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    FormsModule,
-    RouterModule
-  ],
+  // ReactiveFormsModule no se usaba: los formularios son template-driven.
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './auth.component.html',
   styleUrl: './auth.component.css'
 })
-export class AuthComponent implements OnInit {
+export class AuthComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
+  private authService = inject(AuthService);
+  private router = inject(Router);
+
+  private destroy$ = new Subject<void>();
+  private redireccionTimer?: ReturnType<typeof setTimeout>;
 
   // Control de rotación 3D
   isFlipped = false;
 
-  // === VARIABLES DE LOGIN ===
+  // === LOGIN ===
   emailLogin = '';
   contrasenaLogin = '';
   rememberMe = false;
   loginError = '';
+  cargandoLogin = false;
 
-  // === VARIABLES DE REGISTRO ===
+  // === REGISTRO ===
   nombreRegistro = '';
   emailRegistro = '';
   contrasenaRegistro = '';
@@ -37,24 +41,26 @@ export class AuthComponent implements OnInit {
   rol = 'aprendiz';
   registroError = '';
   registroExito = '';
-
-  constructor(
-    private authService: AuthService,
-    private router: Router
-  ) {}
+  cargandoRegistro = false;
 
   ngOnInit(): void {
-    // Sincroniza la cara de la tarjeta según el queryParam ?mode=registro / ?mode=login
-    this.route.queryParams.subscribe(params => {
-      if (params['mode'] === 'registro') {
-        this.isFlipped = true;
-      } else if (params['mode'] === 'login') {
-        this.isFlipped = false;
-      }
-    });
+    this.route.queryParams
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(params => {
+        if (params['mode'] === 'registro') {
+          this.isFlipped = true;
+        } else if (params['mode'] === 'login') {
+          this.isFlipped = false;
+        }
+      });
   }
 
-  // Intercambia las caras y limpia los mensajes de alerta
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    if (this.redireccionTimer) clearTimeout(this.redireccionTimer);
+  }
+
   toggleFlip(): void {
     this.isFlipped = !this.isFlipped;
     this.loginError = '';
@@ -63,29 +69,44 @@ export class AuthComponent implements OnInit {
   }
 
   onLogin(): void {
+    if (this.cargandoLogin) return;
+
     if (!this.emailLogin || !this.contrasenaLogin) {
-      this.loginError = 'Por favor completa todos los campos.';
+      this.loginError = 'Completa el correo y la contraseña.';
       return;
     }
 
     this.loginError = '';
+    this.cargandoLogin = true;
 
-    this.authService.login({ email: this.emailLogin, contraseña: this.contrasenaLogin }).subscribe({
-      next: (response: AuthRespuesta) => {
-        this.authService.guardarSesion(response);
-        const rutaDestino = this.authService.rutaSegunRol(response.data.usuario.rol);
-        this.router.navigate([rutaDestino]);
-      },
-      error: (err: any) => {
-        console.error('Error en login:', err);
-        this.loginError = 'Credenciales incorrectas. Verifica tu correo y contraseña.';
-      }
-    });
+    this.authService
+      .login({ email: this.emailLogin, contraseña: this.contrasenaLogin })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response: AuthRespuesta) => {
+          this.cargandoLogin = false;
+          this.authService.guardarSesion(response);
+          const rutaDestino = this.authService.rutaSegunRol(response.data.usuario.rol);
+          this.router.navigate([rutaDestino]);
+        },
+        error: (err: unknown) => {
+          this.cargandoLogin = false;
+          console.error('Error en login:', err);
+          this.loginError = 'Correo o contraseña incorrectos. Revísalos e intenta de nuevo.';
+        }
+      });
   }
 
   onRegister(): void {
+    if (this.cargandoRegistro) return;
+
     if (!this.nombreRegistro || !this.emailRegistro || !this.contrasenaRegistro) {
-      this.registroError = 'Por favor completa todos los campos requeridos.';
+      this.registroError = 'Completa todos los campos requeridos.';
+      return;
+    }
+
+    if (this.contrasenaRegistro.length < 8) {
+      this.registroError = 'La contraseña debe tener al menos 8 caracteres.';
       return;
     }
 
@@ -95,24 +116,32 @@ export class AuthComponent implements OnInit {
     }
 
     this.registroError = '';
+    this.cargandoRegistro = true;
 
-    this.authService.register({
-      nombre: this.nombreRegistro,
-      email: this.emailRegistro,
-      contraseña: this.contrasenaRegistro,
-      rol: this.rol
-    }).subscribe({
-      next: () => {
-        this.registroExito = '¡Cuenta creada con éxito! Redirigiendo al login...';
-        setTimeout(() => {
-          this.emailLogin = this.emailRegistro;
-          this.toggleFlip();
-        }, 1500);
-      },
-      error: (err: any) => {
-        console.error('Error en registro:', err);
-        this.registroError = 'Error al registrar la cuenta. Inténtalo de nuevo.';
-      }
-    });
+    this.authService
+      .register({
+        nombre: this.nombreRegistro,
+        email: this.emailRegistro,
+        contraseña: this.contrasenaRegistro,
+        rol: this.rol
+      })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.cargandoRegistro = false;
+          this.registroExito = 'Cuenta creada. Te llevamos al inicio de sesión…';
+          this.redireccionTimer = setTimeout(() => {
+            this.emailLogin = this.emailRegistro;
+            this.contrasenaRegistro = '';
+            this.confirmPassword = '';
+            this.toggleFlip();
+          }, 1500);
+        },
+        error: (err: unknown) => {
+          this.cargandoRegistro = false;
+          console.error('Error en registro:', err);
+          this.registroError = 'No se pudo crear la cuenta. Intenta de nuevo.';
+        }
+      });
   }
 }

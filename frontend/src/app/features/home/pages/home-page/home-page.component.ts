@@ -2,13 +2,13 @@ import { Component, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import gsap from 'gsap';
-import { VantaBackgroundComponent } from '../../../../shared/components/vanta-background/vanta-background.component';
+
 import { NavbarComponent } from '../../../../layouts/navbar/navbar.component';
 
 @Component({
   selector: 'app-home-page',
   standalone: true,
-  imports: [CommonModule, VantaBackgroundComponent, NavbarComponent],
+  imports: [CommonModule],
   templateUrl: './home-page.component.html',
   styleUrl: './home-page.component.css'
 })

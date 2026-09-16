@@ -1,8 +1,9 @@
 import { Component, OnInit, HostListener, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterModule, NavigationEnd } from '@angular/router';  
+import { Router, RouterModule, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { ThemeService } from '../../shared/services/theme.service';
+import { LogoComponent } from '../../shared/components/logo/logo.component';
 
 type Rol = 'aprendiz' | 'mentor' | 'administrador';
 
@@ -16,8 +17,7 @@ function decodificarPayloadJWT(token: string): { id: string; rol: Rol; email: st
     const payloadBase64 = token.split('.')[1];
     const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
     const parsed = JSON.parse(payloadJson);
-    
-    // Normalizamos el rol a minúsculas para evitar fallos de coincidencia
+
     if (parsed && parsed.rol) {
       parsed.rol = parsed.rol.toLowerCase() as Rol;
     }
@@ -30,18 +30,16 @@ function decodificarPayloadJWT(token: string): { id: string; rol: Rol; email: st
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, LogoComponent],
   template: `
     <nav class="navbar" [class.scrolled]="scrolled()">
       <div class="navbar-inner">
-        <a class="brand" routerLink="/" aria-label="Ir al inicio">
-          <span class="brand-mark">
-            <span class="dot dot-a"></span>
-            <span class="dot dot-b"></span>
-            <span class="dot dot-c"></span>
-          </span>
-          <span class="brand-name">MentorSync<span class="brand-accent">AI</span></span>
-        </a>
+       <a class="brand" routerLink="/" aria-label="Ir al inicio">
+  <div class="logo-wrapper">
+    <app-logo></app-logo>
+  </div>
+  <span class="brand-name">MentorSync<span class="brand-accent">AI</span></span>
+</a>
 
         <button
           class="menu-toggle"
@@ -53,7 +51,6 @@ function decodificarPayloadJWT(token: string): { id: string; rol: Rol; email: st
         </button>
 
         <div class="nav-actions" [class.open]="menuOpen()">
-          <!-- Sesión iniciada: enlaces a módulos según el rol -->
           <ng-container *ngIf="isLoggedIn()">
             <button
               *ngFor="let enlace of enlacesModulos()"
@@ -65,13 +62,11 @@ function decodificarPayloadJWT(token: string): { id: string; rol: Rol; email: st
             </button>
           </ng-container>
 
-          <!-- Sin sesión, en home: invitación a entrar -->
           <ng-container *ngIf="!isLoggedIn() && isHomePage()">
             <button (click)="goLogin()" class="btn outline">Iniciar sesión</button>
             <button (click)="goRegister()" class="btn accent">Regístrate</button>
           </ng-container>
 
-          <!-- Sin sesión, en otra página -->
           <ng-container *ngIf="!isLoggedIn() && !isHomePage()">
             <button (click)="goHome()" class="nav-link">Volver al inicio</button>
           </ng-container>
@@ -93,7 +88,6 @@ function decodificarPayloadJWT(token: string): { id: string; rol: Rol; email: st
     </nav>
   `,
   styles: [`
-    /* ---------- Navbar flotante ---------- */
     .navbar {
       position: fixed;
       top: 1.4rem;
@@ -155,18 +149,48 @@ function decodificarPayloadJWT(token: string): { id: string; rol: Rol; email: st
       text-decoration: none;
       flex-shrink: 0;
     }
-    .brand-mark {
+
+    .logo-wrapper {
+  width: 36px;
+  height: 36px;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-wrapper app-logo {
+  transform: scale(0.09); /* Escala el logo de 400px a ~36px */
+  transform-origin: center center;
+  pointer-events: none; /* Evita que las animaciones interfieran con clicks */
+}
+
+    /* LOGO CSS */
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #7C5CFF 0%, #22D3EE 100%);
+      border-radius: 8px;
       display: flex;
-      gap: 3px;
-      padding: 7px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: var(--radius-sm, 9px);
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 15px rgba(124, 92, 255, 0.4);
+      flex-shrink: 0;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-    .dot { width: 6px; height: 6px; border-radius: 50%; }
-    .dot-a { background: var(--accent-violet, #7C5CFF); }
-    .dot-b { background: var(--accent-cyan, #22D3EE); }
-    .dot-c { background: var(--text-muted, #8b8b9a); }
+    .brand:hover .brand-logo {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(124, 92, 255, 0.6);
+    }
+
+    .logo-m {
+      color: #fff;
+      font-size: 20px;
+      font-weight: 700;
+      text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+      line-height: 1;
+    }
 
     .brand-name {
       font-family: var(--font-display, inherit);
@@ -388,16 +412,16 @@ export class NavbarComponent implements OnInit {
     this.isHomePage.set(url === '/' || url === '');
   }
 
-  goHome() { 
-    this.router.navigate(['/']); 
+  goHome() {
+    this.router.navigate(['/']);
   }
 
-  goLogin() { 
-    this.router.navigate(['/auth'], { queryParams: { mode: 'login' } }); 
+  goLogin() {
+    this.router.navigate(['/auth'], { queryParams: { mode: 'login' } });
   }
 
-  goRegister() { 
-    this.router.navigate(['/auth'], { queryParams: { mode: 'registro' } }); 
+  goRegister() {
+    this.router.navigate(['/auth'], { queryParams: { mode: 'registro' } });
   }
 
   logout() {

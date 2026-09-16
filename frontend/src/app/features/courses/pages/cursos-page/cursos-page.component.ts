@@ -19,6 +19,7 @@ export class CursosPageComponent implements OnInit, AfterViewInit {
   selectedCourse: Curso | null = null;
   cursos: Curso[] = [];
   displayedCourses: Curso[] = [];
+  cargando = true;
 
   // 👇 aquí inyectamos ChangeDetectorRef
   constructor(
@@ -33,12 +34,14 @@ export class CursosPageComponent implements OnInit, AfterViewInit {
         console.log('Cursos recibidos en Angular:', cursos);
         this.cursos = cursos;
         this.recomputeCourses(); // 👈 llena displayedCourses
+        this.cargando = false;
         this.cdr.detectChanges(); // 👈 fuerza actualización de la vista
       },
       error: (err) => {
         console.error('Error al cargar cursos desde MongoDB:', err);
         this.cursos = [];
         this.recomputeCourses();
+        this.cargando = false;
         this.cdr.detectChanges();
       }
     });

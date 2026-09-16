@@ -1,0 +1,37 @@
+<div class="splash-overlay" *ngIf="visible()" [class.fade-out]="fadingOut()">
+  <div class="splash-content">
+    <div class="logo-scene">
+      <div class="center-square">
+        <span class="letter-m">M</span>
+      </div>
+
+      <svg class="orbit-svg" viewBox="0 0 400 400">
+        <g class="connections">
+          <line x1="200" y1="200" x2="120" y2="130" class="conn-line" />
+          <line x1="200" y1="200" x2="280" y2="110" class="conn-line" />
+          <line x1="200" y1="200" x2="310" y2="200" class="conn-line" />
+          <line x1="200" y1="200" x2="270" y2="290" class="conn-line" />
+          <line x1="200" y1="200" x2="130" y2="290" class="conn-line" />
+          <line x1="200" y1="200" x2="100" y2="210" class="conn-line" />
+        </g>
+
+        <circle cx="120" cy="130" r="8" class="node node-1" />
+        <circle cx="280" cy="110" r="8" class="node node-2" />
+        <circle cx="310" cy="200" r="8" class="node node-3" />
+        <circle cx="270" cy="290" r="8" class="node node-4" />
+        <circle cx="130" cy="290" r="8" class="node node-5" />
+        <circle cx="100" cy="210" r="8" class="node node-6" />
+      </svg>
+
+      <div class="orbit-ring"></div>
+    </div>
+
+    <h1 class="splash-title">MentorSync<span class="accent">AI</span></h1>
+    
+    <div class="loader">
+      <span class="loader-dot"></span>
+      <span class="loader-dot"></span>
+      <span class="loader-dot"></span>
+    </div>
+  </div>
+</div>
