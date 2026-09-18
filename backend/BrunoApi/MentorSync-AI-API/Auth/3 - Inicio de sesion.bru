@@ -1,7 +1,7 @@
 meta {
-  name: 3 - Inicio de sesion
+  name: Inicio Sesion
   type: http
-  seq: 3
+  seq: 1
 }
 
 post {
@@ -16,8 +16,8 @@ headers {
 
 body:json {
   {
-  "email": "santiago@gmail.com",
-  "contraseña": "clave12345"
+  "email": "mentorprueba@test.com",
+  "contraseña": "12345678"
   }
 }
 
@@ -26,14 +26,13 @@ vars:post-response {
 }
 
 script:post-response {
-  {
-    "email": "mentor.prueba@test.com",
-    "contraseña": "12345678"
+  if (res.body?.data?.token) {
+    bru.setVar("token", res.body.data.token);
   }
 }
 
 docs {
-  Inicia sesión con el aprendiz creado en el request 1.
-  El script post-response guarda el token en la variable de entorno "token"
-  automáticamente, así el request 4 lo usa sin copiar/pegar nada.
+  Este request inicia sesión con el mentor.
+  El script post-response guarda el token JWT en la variable de entorno "token"
+  automáticamente, así otros requests lo usan sin copiar/pegar nada.
 }

@@ -29,45 +29,54 @@ class CursoRepository {
 
 
   async listarPublicados({ pagina = 1, limite = 12 } = {}) {
-  const salto = (pagina - 1) * limite;
-  console.log('Buscando cursos publicados...', { pagina, limite, salto });
-  const cursos = await Curso.find({ estado: 'publicado', activo: true })
-    .populate('mentor', 'nombre')
-    .sort({ createdAt: -1 })
-    .skip(salto)
-    .limit(limite);
-  console.log('Cursos encontrados:', cursos);
-  return cursos;
-}
+    const salto = (pagina - 1) * limite;
+    console.log('Buscando cursos publicados...', { pagina, limite, salto });
+    const cursos = await Curso.find({ estado: 'publicado', activo: true })
+      .populate('mentor', 'nombre')
+      .sort({ createdAt: -1 })
+      .skip(salto)
+      .limit(limite);
+    console.log('Cursos encontrados:', cursos);
+    return cursos;
+  }
 
   async listarPorMentor(mentorId) {
-  return Curso.find({ mentor: mentorId, activo: true }).sort({ createdAt: -1 });
-}
+    return Curso.find({ mentor: mentorId, activo: true }).sort({ createdAt: -1 });
+  }
 
   async actualizar(id, cambios) {
-  return Curso.findOneAndUpdate({ _id: id, activo: true }, cambios, {
-    new: true,
-    runValidators: true,
-  });
-}
+    return Curso.findOneAndUpdate({ _id: id, activo: true }, cambios, {
+      new: true,
+      runValidators: true,
+    });
+  }
+
+  // Actualizar imagen del curso (el esquema usa "portadaUrl", no "imagen")
+  async actualizarImagen(cursoId, imagenData) {
+    return Curso.findByIdAndUpdate(
+      cursoId,
+      { portadaUrl: imagenData },
+      { new: true }
+    ).populate('mentor', 'nombre email');
+  }
 
   async eliminarLogico(id) {
-  return Curso.findOneAndUpdate({ _id: id }, { activo: false }, { new: true });
-}
+    return Curso.findOneAndUpdate({ _id: id }, { activo: false }, { new: true });
+  }
 
   // Usado por el futuro pipeline RAG cuando termine de generar embeddings
   async marcarBotEntrenado(id, { totalChunks, documentoOrigenNombre }) {
-  return Curso.findByIdAndUpdate(
-    id,
-    {
-      'bot.entrenado': true,
-      'bot.fechaEntrenamiento': new Date(),
-      'bot.totalChunks': totalChunks,
-      'bot.documentoOrigenNombre': documentoOrigenNombre,
-    },
-    { new: true }
-  );
-}
+    return Curso.findByIdAndUpdate(
+      id,
+      {
+        'bot.entrenado': true,
+        'bot.fechaEntrenamiento': new Date(),
+        'bot.totalChunks': totalChunks,
+        'bot.documentoOrigenNombre': documentoOrigenNombre,
+      },
+      { new: true }
+    );
+  }
 }
 
 export default new CursoRepository();

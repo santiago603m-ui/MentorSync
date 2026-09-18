@@ -1,7 +1,29 @@
+<app-vanta-background></app-vanta-background>
 <div class="workspace-container">
+  <app-navbar></app-navbar>
+  <!-- Navbar lateral izquierda -->
+  <aside class="internal-left-navbar cosmic-glass">
+    <nav class="nav-menu">
+      <button [class.active]="activeModule === 'dashboard'" 
+              (click)="activeModule = 'dashboard'" 
+              class="nav-item">
+        <i class="fa-solid fa-chart-pie"></i>
+        <span>Dashboard</span>
+      </button>
+
+      <button [class.active]="activeModule === 'cursos'" 
+              (click)="activeModule = 'cursos'" 
+              class="nav-item">
+        <i class="fa-solid fa-book-open"></i>
+        <span>Cursos</span>
+      </button>
+    </nav>
+  </aside>
+
+  <!-- Contenido centrado -->
   <main class="content-viewport">
     <!-- Módulo Cursos -->
-    <div *ngIf="activeModule === 'cursos'" class="module-section animate-fade">
+    <div *ngIf="activeModule === 'cursos'" class="module-section animate-fade center-content">
       <div class="card cosmic-card">
         <div class="card-header">
           <h2><i class="fa-solid fa-layer-group"></i> Catálogo de Cursos Disponibles</h2>
@@ -18,27 +40,24 @@
                 </tr>
               </thead>
               <tbody>
-                <!-- 👇 Usamos trackById definido en el TS -->
                 <tr *ngFor="let curso of cursos | filter:searchCurso; trackBy: trackById">
                   <td><strong>{{ curso.titulo }}</strong></td>
                   <td>{{ curso.mentor?.nombre || 'Sin mentor asignado' }}</td>
                   <td class="text-right">
-                    <!-- Si el usuario NO está inscrito -->
-                    <!-- Si el curso NO tiene inscritos -->
-                    <button *ngIf="!curso.inscritos || curso.inscritos.length === 0" class="btn-action"
-                      (click)="inscribir(curso._id)">
+                    <button *ngIf="!curso.inscritos || curso.inscritos.length === 0" 
+                            class="btn-action"
+                            (click)="inscribir(curso._id)">
                       Inscribirse
                     </button>
 
-                    <!-- Si el curso YA tiene inscritos -->
-                    <button *ngIf="curso.inscritos && curso.inscritos.length > 0" class="btn-cancel"
-                      (click)="cancelarInscripcion(curso._id, curso.inscritos[0]._id)">
+                    <button *ngIf="curso.inscritos && curso.inscritos.length > 0" 
+                            class="btn-cancel"
+                            (click)="cancelarInscripcion(curso._id, curso.inscritos[0]._id)">
                       Cancelar inscripción
                     </button>
                   </td>
                 </tr>
 
-                <!-- Mensaje si no hay cursos -->
                 <tr *ngIf="cursos.length === 0">
                   <td colspan="3" class="empty-state">No se encontraron cursos.</td>
                 </tr>
@@ -48,27 +67,15 @@
         </div>
       </div>
     </div>
-  </main>
 
-  <!-- Navbar derecha (igual que antes) -->
-  <aside class="internal-right-navbar cosmic-glass">
-    <div class="navbar-header">
-      <div class="nav-logo-icon">
-        <i class="fa-solid fa-satellite"></i>
+    <!-- Módulo Dashboard -->
+    <div *ngIf="activeModule === 'dashboard'" class="module-section animate-fade center-content">
+      <div class="card cosmic-card">
+        <div class="card-body">
+          <h2>Bienvenido al Dashboard</h2>
+          <p>Aquí irá tu información general.</p>
+        </div>
       </div>
-      <span class="nav-title">Módulos</span>
     </div>
-
-    <nav class="nav-menu">
-      <button [class.active]="activeModule === 'dashboard'" (click)="activeModule = 'dashboard'" class="nav-item">
-        <i class="fa-solid fa-chart-pie"></i>
-        <span>Dashboard</span>
-      </button>
-
-      <button [class.active]="activeModule === 'cursos'" (click)="activeModule = 'cursos'" class="nav-item">
-        <i class="fa-solid fa-book-open"></i>
-        <span>Cursos</span>
-      </button>
-    </nav>
-  </aside>
+  </main>
 </div>

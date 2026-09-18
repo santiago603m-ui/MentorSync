@@ -5,7 +5,22 @@ import Usuario from '../models/user.model.js'; // 👈 importa tu modelo de usua
 class CourseController {
   async crearCurso(req, res, next) {
     try {
-      const curso = await cursoService.crearCurso(req.usuario.id, req.body);
+      // 👇 Buscamos el usuario para obtener su nombre, igual que en inscribirCurso
+      const usuario = await Usuario.findById(req.usuario.id).select('nombre');
+      if (!usuario) {
+        return res.status(404).json({
+          success: false,
+          message: 'Usuario no encontrado',
+          data: null,
+        });
+      }
+
+      // 👇 Le pasamos al service un objeto { id, nombre } en vez del id plano
+      const curso = await cursoService.crearCurso(
+        { id: req.usuario.id, nombre: usuario.nombre },
+        req.body
+      );
+
       return res.status(201).json({
         success: true,
         message: 'Curso creado correctamente',
@@ -98,6 +113,7 @@ class CourseController {
       });
     }
   }
+
   async cancelarInscripcion(req, res) {
     try {
       const cursoId = req.params.id;
@@ -160,6 +176,19 @@ class CourseController {
       return res.status(200).json({
         success: true,
         message: 'Estado del curso actualizado correctamente',
+        data: { curso },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async subirImagenCurso(req, res, next) {
+    try {
+      const curso = await cursoService.subirImagenCurso(req.params.id, req.usuario.id, req.file.path);
+      return res.status(200).json({
+        success: true,
+        message: 'Imagen del curso actualizada correctamente',
         data: { curso },
       });
     } catch (error) {

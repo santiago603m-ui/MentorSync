@@ -4,7 +4,7 @@ export interface Curso {
   descripcion: string;
   categoria: string;
   mentor?: { _id: string; nombre: string };
-  portadaUrl?: string;
+  portadaUrl?: string; // 👈 imagen/portada
   estado?: 'borrador' | 'publicado' | 'archivado';
   precio: number;
   duracionEstimadaHoras?: number;

@@ -1,0 +1,18 @@
+meta {
+  name: Subir Imagen Curso
+  type: http
+}
+
+post {
+  url: {{baseUrl}}/api/cursos/{{cursoId}}/subir-imagen
+  body: multipartForm
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:multipart-form {
+  portadaUrl: @file(C:\MentorSync\backend\Brun\imagen.png)
+}

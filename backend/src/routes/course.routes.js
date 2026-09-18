@@ -8,7 +8,9 @@ import {
   esquemaCambiarEstado,
 } from '../validators/course.validator.js';
 import courseController from '../controllers/course.controller.js';
+import multer from 'multer';
 
+const upload = multer({ dest: 'uploads/' });
 const router = Router();
 
 // Públicas
@@ -32,8 +34,9 @@ router.post(
   courseController.crearCurso
 );
 
+
 // ==========================================
-// NUEVA RUTA AGREGADA (Generar estructura con IA)
+// Generar estructura con IA (usa el texto ya procesado del curso, no recibe archivo)
 // ==========================================
 router.post(
   '/:id/generar-estructura',
@@ -41,6 +44,16 @@ router.post(
   verificarRol('mentor'),
   courseController.generarEstructura
 );
+
+// 👇 aquí va el multer: esta ruta sí recibe el archivo de imagen
+router.post(
+  '/:id/subir-imagen',
+  verificarToken,
+  verificarRol('mentor'),
+  upload.single('portadaUrl'),
+  courseController.subirImagenCurso
+);
+
 router.post(
   '/:id/inscribir',
   verificarToken,

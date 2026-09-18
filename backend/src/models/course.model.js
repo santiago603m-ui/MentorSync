@@ -24,7 +24,6 @@ const inscritoSchema = new mongoose.Schema({
 
 const cursoSchema = new mongoose.Schema(
   {
-    
     titulo: {
       type: String,
       required: [true, 'El título es obligatorio'],
@@ -43,9 +42,8 @@ const cursoSchema = new mongoose.Schema(
       trim: true,
     },
     mentor: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Usuario',
-      required: true,
+      _id: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
+      nombre: { type: String }
     },
     portadaUrl: {
       type: String,
@@ -66,12 +64,10 @@ const cursoSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
-    // NUEVO: Almacena el texto extraído del PDF para que Groq lo procese
     contenidoTextoPlano: {
       type: String,
       default: null,
     },
-    // NUEVO: Almacena la estructura tipo Platzi generada por la IA
     modulos: [moduloSchema],
     bot: {
       entrenado: { type: Boolean, default: false },
@@ -84,7 +80,6 @@ const cursoSchema = new mongoose.Schema(
       default: true,
     },
     inscritos: [inscritoSchema]
-
   },
   { timestamps: true }
 );

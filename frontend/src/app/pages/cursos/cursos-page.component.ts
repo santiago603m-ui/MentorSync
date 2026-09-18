@@ -5,13 +5,15 @@ import { CursoService } from '../../core/services/curso.service';
 import { Curso } from '../../models/curso.model';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { NavbarComponent } from '../../layouts/navbar/navbar.component';
+import { VantaBackgroundComponent } from '../../shared/components/vanta-background/vanta-background.component';
 
 @Component({
   selector: 'app-cursos-page',
   standalone: true,
   templateUrl: './cursos-page.component.html',
   styleUrls: ['./cursos-page.component.css'],
-  imports: [CommonModule, FormsModule, CurrencyPipe]
+  imports: [CommonModule, FormsModule, CurrencyPipe, NavbarComponent, VantaBackgroundComponent]
 })
 export class CursosPageComponent implements OnInit, AfterViewInit {
   searchTerm = '';

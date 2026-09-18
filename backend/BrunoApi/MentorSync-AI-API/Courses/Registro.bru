@@ -1,31 +1,26 @@
 meta {
-  name: Registro
+  name: Crear Curso
   type: http
-  seq: 1
 }
 
 post {
   url: {{baseUrl}}/api/cursos
+  auth: bearer {{token}}
   body: json
-  auth: inherit
-}
-
-headers {
-  Authorization: Bearer {{token}}
 }
 
 body:json {
-  {
-    "titulo": "Curso de prueba RAG",
-    "descripcion": "Curso creado para probar el flujo de subida de PDF y el pipeline RAG",
-    "categoria": "Backend",
-    "precio": 0,
-    "duracionEstimadaHoras": 5
-  }
+  "titulo": "Curso de Angular avanzado",
+  "descripcion": "Aprende Angular con proyectos",
+  "categoria": "Programación",
+  "precio": 250,
+  "duracionEstimadaHoras": 40,
+  "estado": "publicado",
+  "activo": true
 }
 
-settings {
-  encodeUrl: true
-  timeout: 0
+docs {
+  Este request crea un curso nuevo. 
+  La imagen se sube en un paso aparte.
 }
 ​

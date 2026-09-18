@@ -1,12 +1,18 @@
 import Groq from 'groq-sdk';
 import cursoRepository from '../repositories/course.repository.js';
 import { AppError } from '../utils/AppError.js';
+import { uploadImageCloudinary } from '../config/cloudinary.img.js';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 class CursoService {
-  async crearCurso(mentorId, datosCurso) {
-    return cursoRepository.crear({ ...datosCurso, mentor: mentorId });
+  async crearCurso(mentor, datosCurso) {
+    // 👇 mentor ahora es { id, nombre }, y se arma el subdocumento
+    //    tal como lo exige el esquema (mentor._id es required)
+    return cursoRepository.crear({
+      ...datosCurso,
+      mentor: { _id: mentor.id, nombre: mentor.nombre },
+    });
   }
 
   async obtenerCursoPorId(id) {
@@ -44,6 +50,15 @@ class CursoService {
     const curso = await this.obtenerCursoPorId(id);
     this.verificarPropiedad(curso, mentorId);
     return cursoRepository.actualizar(id, cambios);
+  }
+
+  async subirImagenCurso(id, mentorId, filePath) {
+    const curso = await this.obtenerCursoPorId(id);
+    this.verificarPropiedad(curso, mentorId);
+
+    const imagenData = await uploadImageCloudinary(filePath);
+    // 👇 portadaUrl en el esquema es un String, así que guardamos solo la url
+    return cursoRepository.actualizarImagen(id, imagenData.url);
   }
 
   async cambiarEstado(id, mentorId, estado) {

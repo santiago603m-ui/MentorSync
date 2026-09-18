@@ -6,11 +6,13 @@ import { FilterPipe } from '../../shared/pipes/filter.pipe';
 import { CursoService } from '../../core/services/curso.service';
 import { Curso } from '../../models/curso.model';
 import { AuthService } from '../../core/services/auth.service';
+import { VantaBackgroundComponent } from '../../shared/components/vanta-background/vanta-background.component';
+import { NavbarComponent } from '../../layouts/navbar/navbar.component';
 
 @Component({
   selector: 'app-aprendiz-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, FilterPipe],
+  imports: [CommonModule, FormsModule, FilterPipe, VantaBackgroundComponent, NavbarComponent],
   templateUrl: './aprendiz-page.component.html',
   styleUrls: ['./aprendiz-page.component.css']
 })
