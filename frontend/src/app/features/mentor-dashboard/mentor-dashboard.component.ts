@@ -309,25 +309,6 @@ export class MentorDashboardQuickComponent {
   ],
   template: `
     <div class="mentor-layout">
-      <!-- Fondo Constelación Estilo MentorSync AI -->
-      <div class="constellation-background">
-        <div class="constellation-node n1"></div>
-        <div class="constellation-node n2"></div>
-        <div class="constellation-node n3"></div>
-        <div class="constellation-node n4"></div>
-        <div class="constellation-node n5"></div>
-        <div class="constellation-node n6"></div>
-        <div class="constellation-node n7"></div>
-        <svg class="constellation-lines" width="100%" height="100%">
-          <line x1="15%" y1="20%" x2="45%" y2="60%" stroke="rgba(6, 182, 212, 0.3)" stroke-width="1.5" />
-          <line x1="45%" y1="60%" x2="80%" y2="30%" stroke="rgba(6, 182, 212, 0.3)" stroke-width="1.5" />
-          <line x1="80%" y1="30%" x2="70%" y2="80%" stroke="rgba(59, 130, 246, 0.25)" stroke-width="1.5" />
-          <line x1="25%" y1="75%" x2="45%" y2="60%" stroke="rgba(59, 130, 246, 0.25)" stroke-width="1.5" />
-          <line x1="10%" y1="65%" x2="25%" y2="75%" stroke="rgba(139, 92, 246, 0.2)" stroke-width="1.5" />
-          <line x1="70%" y1="80%" x2="90%" y2="60%" stroke="rgba(139, 92, 246, 0.2)" stroke-width="1.5" />
-        </svg>
-      </div>
-
       <!-- Cuerpo Principal -->
       <div class="panel-body">
         
@@ -623,52 +604,8 @@ export class MentorDashboardQuickComponent {
       display: flex;
       flex-direction: column;
       position: relative;
-      background-color: #030308;
+      background: transparent;
       overflow: hidden;
-    }
-
-    /* Fondo Constelación Animada - más visible */
-    .constellation-background {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      z-index: 0;
-      pointer-events: none;
-    }
-
-    .constellation-lines {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
-    }
-
-    .constellation-node {
-      position: absolute;
-      width: 7px;
-      height: 7px;
-      background-color: #06b6d4;
-      border-radius: 50%;
-      box-shadow: 0 0 16px 4px #06b6d4;
-      animation: nodePulse 4s ease-in-out infinite alternate;
-    }
-
-    .n1 { top: 20%; left: 15%; animation-delay: 0s; }
-    .n2 { top: 60%; left: 45%; animation-delay: 1s; background-color: #3b82f6; box-shadow: 0 0 16px 4px #3b82f6; }
-    .n3 { top: 30%; left: 80%; animation-delay: 2s; }
-    .n4 { top: 80%; left: 70%; animation-delay: 1.5s; background-color: #8b5cf6; box-shadow: 0 0 16px 4px #8b5cf6; }
-    .n5 { top: 75%; left: 25%; animation-delay: 0.5s; }
-    .n6 { top: 65%; left: 10%; animation-delay: 2.5s; background-color: #8b5cf6; box-shadow: 0 0 16px 4px #8b5cf6; }
-    .n7 { top: 60%; left: 90%; animation-delay: 3s; background-color: #3b82f6; box-shadow: 0 0 16px 4px #3b82f6; }
-
-    @keyframes nodePulse {
-      0% { transform: scale(0.9); opacity: 0.55; box-shadow: 0 0 10px 2px currentColor; }
-      100% { transform: scale(2); opacity: 1; box-shadow: 0 0 26px 8px currentColor; }
     }
 
     /* Layout Principal Flex */

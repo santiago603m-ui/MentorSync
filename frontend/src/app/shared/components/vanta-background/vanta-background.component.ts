@@ -3,15 +3,17 @@ import {
   ElementRef,
   AfterViewInit,
   OnDestroy,
+  OnInit,
   ViewChild,
   PLATFORM_ID,
   inject,
+  signal,
   effect
 } from '@angular/core';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs';
-import { NavbarComponent } from '../../../layouts/navbar/navbar.component'; // Verifica la ruta de importación
+import { NavbarComponent } from '../../../layouts/navbar/navbar.component';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import { ThemeService } from '../../../shared/services/theme.service';
 
@@ -24,8 +26,8 @@ const COLOR_POR_MODO = { dark: 0x1b1035, light: 0x8fb4dd } as const;
   standalone: true,
   imports: [CommonModule, RouterOutlet, NavbarComponent, FooterComponent],
   template: `
-    <div #vantaRef class="vanta-bg" [class.hidden]="isSolidBg()"></div>
-    <div class="vanta-content" [class.solid-bg]="isSolidBg()">
+    <div #vantaRef class="vanta-bg" [class.hidden]="solidBg()" [class.is-ready]="vistaLista"></div>
+    <div class="vanta-content" [class.solid-bg]="solidBg()">
       <app-navbar></app-navbar>
       <main class="page-container">
         <router-outlet></router-outlet>
@@ -44,7 +46,7 @@ const COLOR_POR_MODO = { dark: 0x1b1035, light: 0x8fb4dd } as const;
       opacity: 0;
       transition: opacity 0.6s ease;
     }
-    .vanta-bg.is-ready {
+    .vanta-bg.is-ready:not(.hidden) {
       opacity: 1;
     }
     .vanta-bg.hidden {
@@ -68,11 +70,11 @@ const COLOR_POR_MODO = { dark: 0x1b1035, light: 0x8fb4dd } as const;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      padding-top: 5rem; /* Evita que el Navbar solape los formularios */
+      padding-top: 5rem;
     }
   `],
 })
-export class VantaBackgroundComponent implements AfterViewInit, OnDestroy {
+export class VantaBackgroundComponent implements AfterViewInit, OnDestroy, OnInit {
   @ViewChild('vantaRef', { static: true }) vantaRef!: ElementRef<HTMLDivElement>;
 
   private platformId = inject(PLATFORM_ID);
@@ -81,20 +83,32 @@ export class VantaBackgroundComponent implements AfterViewInit, OnDestroy {
   private efectoVanta: { destroy: () => void } | null = null;
   private THREE: unknown = null;
   private WAVES: FabricaVanta | null = null;
-  private vistaLista = false;
+  vistaLista = false;
 
-  // Home y auth usan fondo sólido #0B1020, el resto usa Vanta
-  isSolidBg(): boolean {
+  solidBg = signal(this.checkSolidBg());
+
+  private checkSolidBg(): boolean {
     if (!isPlatformBrowser(this.platformId)) return false;
-    const url = this.router.url.split('?')[0].split('#')[0];
-    return url === '/' || url === '' || url.startsWith('/auth') || url.startsWith('/login') || url.startsWith('/registro');
+    try {
+      const url = this.router.url.split('?')[0].split('#')[0];
+      return url === '/' || url === '' || url.startsWith('/auth') || url.startsWith('/login') || url.startsWith('/registro');
+    } catch {
+      return false;
+    }
   }
 
   constructor() {
-    // Recrea las olas con el color del modo cuando cambia claro/oscuro
     effect(() => {
       this.theme.mode();
       if (this.vistaLista) void this.recrearEfecto();
+    });
+  }
+
+  ngOnInit(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    this.solidBg.set(this.checkSolidBg());
+    this.router.events.pipe(filter((e) => e instanceof NavigationEnd)).subscribe(() => {
+      this.solidBg.set(this.checkSolidBg());
     });
   }
 
@@ -117,6 +131,7 @@ export class VantaBackgroundComponent implements AfterViewInit, OnDestroy {
 
   private crearEfecto(): void {
     if (!this.WAVES) return;
+    if (this.solidBg()) return;
     this.efectoVanta = this.WAVES({
       el: this.vantaRef.nativeElement,
       THREE: this.THREE,
@@ -139,6 +154,7 @@ export class VantaBackgroundComponent implements AfterViewInit, OnDestroy {
     if (!isPlatformBrowser(this.platformId)) return;
     this.efectoVanta?.destroy();
     this.efectoVanta = null;
+    if (this.solidBg()) return;
     this.crearEfecto();
   }
 }
