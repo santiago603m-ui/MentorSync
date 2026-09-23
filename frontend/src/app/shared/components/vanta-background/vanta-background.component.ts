@@ -26,7 +26,7 @@ const COLOR_POR_MODO = { dark: 0x1b1035, light: 0x8fb4dd } as const;
   standalone: true,
   imports: [CommonModule, RouterOutlet, NavbarComponent, FooterComponent],
   template: `
-    <div #vantaRef class="vanta-bg" [class.hidden]="solidBg()" [class.is-ready]="vistaLista"></div>
+    <div #vantaRef class="vanta-bg" [class.hidden]="solidBg()"></div>
     <canvas #dotCanvas class="dot-bg" [class.visible]="solidBg()"></canvas>
     <div class="vanta-content">
       <app-navbar></app-navbar>
@@ -99,40 +99,22 @@ export class VantaBackgroundComponent implements AfterViewInit, OnDestroy, OnIni
   private WAVES: FabricaVanta | null = null;
   vistaLista = false;
 
-  solidBg = signal(this.checkSolidBg());
-
-  private checkSolidBg(): boolean {
-    if (!isPlatformBrowser(this.platformId)) return false;
-    try {
-      const url = this.router.url.split('?')[0].split('#')[0];
-      return url === '/' || url === '' || url.startsWith('/auth') || url.startsWith('/login') || url.startsWith('/registro');
-    } catch {
-      return false;
-    }
-  }
+  // Señal reactiva: true = home/auth (fondo sólido + puntos), false = resto (Vanta Waves)
+  solidBg = signal(false);
 
   constructor() {
+    // Sincroniza solidBg con cada NavigationEnd (navegaciones client-side)
     effect(() => {
-      this.theme.mode();
-      if (this.vistaLista) void this.recrearEfecto();
-    });
-    effect(() => {
-      // Reacciona a cambios de ruta (home/auth ↔ resto)
-      this.solidBg();
-      if (!this.vistaLista) return;
-      if (this.solidBg()) {
-        this.efectoVanta?.destroy();
-        this.efectoVanta = null;
-        this.vantaRef.nativeElement.classList.remove('is-ready');
-      } else {
-        void this.recrearEfecto();
-        requestAnimationFrame(() => this.vantaRef.nativeElement.classList.add('is-ready'));
-      }
+      if (!isPlatformBrowser(this.platformId)) return;
+      const url = this.router.url.split('?')[0].split('#')[0];
+      const esHomeOAuth = url === '/' || url === '' || url.startsWith('/auth') || url.startsWith('/login') || url.startsWith('/registro');
+      this.solidBg.set(esHomeOAuth);
     });
   }
 
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) return;
+    // Estado inicial inmediato (el effect del constructor ya lo hizo, pero por si acaso)
     this.solidBg.set(this.checkSolidBg());
     this.router.events.pipe(filter((e) => e instanceof NavigationEnd)).subscribe(() => {
       this.solidBg.set(this.checkSolidBg());
@@ -147,9 +129,15 @@ export class VantaBackgroundComponent implements AfterViewInit, OnDestroy, OnIni
     this.WAVES = WAVES as FabricaVanta;
 
     this.vistaLista = true;
-    this.crearEfecto();
+
+    // Inicializar efecto según la ruta actual
+    this.inicializarFondo();
+
+    // Marcar is-ready después de un frame para que los estilos apliquen
     requestAnimationFrame(() => this.vantaRef.nativeElement.classList.add('is-ready'));
-    this.iniciarDotGrid();
+
+    // Cargar el runtime del dot-grid-wave (solo una vez por sesión)
+    this.cargarDotGridWave();
   }
 
   ngOnDestroy(): void {
@@ -157,109 +145,76 @@ export class VantaBackgroundComponent implements AfterViewInit, OnDestroy, OnIni
     this.efectoVanta = null;
   }
 
-  private crearEfecto(): void {
-    if (!this.WAVES) return;
-    if (this.solidBg()) return;
-    this.efectoVanta = this.WAVES({
-      el: this.vantaRef.nativeElement,
-      THREE: this.THREE,
-      mouseControls: true,
-      touchControls: true,
-      gyroControls: false,
-      minHeight: 200.0,
-      minWidth: 200.0,
-      scale: 1.0,
-      scaleMobile: 1.0,
-      color: COLOR_POR_MODO[this.theme.mode()],
-      shininess: 150.0,
-      waveHeight: 40.0,
-      waveSpeed: 0.55,
-      zoom: 0.65,
-    });
-  }
-
-  private async recrearEfecto(): Promise<void> {
-    if (!isPlatformBrowser(this.platformId)) return;
-    this.efectoVanta?.destroy();
-    this.efectoVanta = null;
-    if (this.solidBg()) return;
-    this.crearEfecto();
-  }
-
-  private iniciarDotGrid(): void {
-    if (!isPlatformBrowser(this.platformId)) return;
-    const canvas = this.dotCanvas?.nativeElement;
-    if (!canvas) {
-      // Reintenta si el ViewChild aún no está disponible
-      setTimeout(() => this.iniciarDotGrid(), 100);
-      return;
+  /** Decide la ruta: true = home/auth (fondo sólido + puntos), false = resto (Vanta Waves) */
+  private checkSolidBg(): boolean {
+    if (!isPlatformBrowser(this.platformId)) return false;
+    try {
+      const url = this.router.url.split('?')[0].split('#')[0];
+      return url === '/' || url === '' || url.startsWith('/auth') || url.startsWith('/login') || url.startsWith('/registro');
+    } catch {
+      return false;
     }
-    const ctx = canvas.getContext('2d', { alpha: true });
-    if (!ctx) return;
+  }
 
-    const bg = '#0B1020';
-    const c1 = { r: 0x7b, g: 0x38, b: 0xf8 }; // #7b38f8
-    const c2 = { r: 0x36, g: 0x00, b: 0xff }; // #3600ff
-    let raf = 0;
-    let t = 0;
-    let mouseX = 0.5, mouseY = 0.5, targetX = 0.5, targetY = 0.5;
+  /** Carga el script del runtime una sola vez (cdn.aidesigner.ai) */
+  private cargarDotGridWave(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const SCRIPT_SRC = 'https://cdn.aidesigner.ai/effects/runtime/v1.js';
+    if (document.querySelector(`script[src="${SCRIPT_SRC}"]`)) return;
+    const script = document.createElement('script');
+    script.src = SCRIPT_SRC;
+    script.defer = true;
+    document.body.appendChild(script);
+  }
 
-    const onMove = (e: MouseEvent) => {
-      targetX = e.clientX / window.innerWidth;
-      targetY = e.clientY / window.innerHeight;
-    };
-    window.addEventListener('mousemove', onMove);
+  /** Inicializa el fondo según la ruta actual */
+  private inicializarFondo(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
 
-    const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
-    const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.8);
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
-      canvas.style.width = window.innerWidth + 'px';
-      canvas.style.height = window.innerHeight + 'px';
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-    resize();
-    window.addEventListener('resize', resize);
+    const esHomeOAuth = this.solidBg();
 
-    const draw = () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      mouseX = lerp(mouseX, targetX, 0.06);
-      mouseY = lerp(mouseY, targetY, 0.06);
-      t += 0.016 * 0.5;
-
-      ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = bg;
-      ctx.fillRect(0, 0, w, h);
-
-      const spacing = 22;
-      const dotBase = spacing * 0.35;
-      const waveScale = 1.2;
-      const cols = Math.ceil(w / spacing) + 2;
-      const rows = Math.ceil(h / spacing) + 2;
-
-      for (let y = -1; y < rows; y++) {
-        for (let x = -1; x < cols; x++) {
-          const px = x * spacing + (y % 2 ? spacing / 2 : 0);
-          const py = y * spacing;
-          const wave = Math.sin((px * 0.012 + py * 0.012) * waveScale - t * 2.2) * 0.5 + 0.5;
-          const distMouse = Math.hypot((px / w) - mouseX, (py / h) - mouseY);
-          const mouseInfluence = Math.max(0, 1 - distMouse * 2.2) * 0.22;
-          const k = Math.min(1, Math.max(0, wave + mouseInfluence));
-          const r = dotBase * (0.45 + k * 0.55);
-          const a = 0.10 + k * 0.38;
-          const rr = Math.round(lerp(c2.r, c1.r, k));
-          const gg = Math.round(lerp(c2.g, c1.g, k));
-          const bb = Math.round(lerp(c2.b, c1.b, k));
-          ctx.beginPath();
-          ctx.arc(px, py, r, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(${rr},${gg},${bb},${a})`;
-          ctx.fill();
-        }
+    if (esHomeOAuth) {
+      // Home / auth: usar dot-grid-wave (canvas) + ocultar Vanta
+      if (this.WAVES) {
+        this.efectoVanta?.destroy();
+        this.efectoVanta = null;
+        this.vantaRef.nativeElement.classList.remove('is-ready');
       }
-      raf = requestAnimationFrame(draw);
-    };
-    draw();
+      // El canvas .dot-bg ya tiene [class.visible]="solidBg()" en el template
+      // No es necesario destruir el canvas, solo controlar su visibilidad
+    } else {
+      // Resto de páginas: usar Vanta Waves, ocultar dot-bg
+      // Ocultar el canvas de puntos
+      if (this.dotCanvas) {
+        this.dotCanvas.nativeElement.style.opacity = '0';
+      }
+      // Crear efecto Vanta
+      if (this.WAVES && !this.solidBg()) {
+        // Destroy any previous efectoVanta
+        this.efectoVanta?.destroy();
+        this.efectoVanta = null;
+
+        // Asegurar que vanta-bg esté visible para Vanta
+        this.vantaRef.nativeElement.classList.add('is-ready');
+        this.vantaRef.nativeElement.classList.remove('hidden');
+
+        this.efectoVanta = this.WAVES({
+          el: this.vantaRef.nativeElement,
+          THREE: this.THREE,
+          mouseControls: true,
+          touchControls: true,
+          gyroControls: false,
+          minHeight: 200.0,
+          minWidth: 200.0,
+          scale: 1.0,
+          scaleMobile: 1.0,
+          color: COLOR_POR_MODO[this.theme.mode()],
+          shininess: 150.0,
+          waveHeight: 40.0,
+          waveSpeed: 0.55,
+          zoom: 0.65,
+        });
+      }
+    }
   }
 }
