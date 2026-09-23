@@ -10,6 +10,7 @@ import { HomePage } from './features/home/pages/home-page/home-page.component';
 import { NavbarComponent } from '../app/layouts/navbar//navbar.component';
 import { CursosPageComponent } from './pages/cursos/cursos-page.component';
 import { VantaBackgroundComponent } from './shared/components/vanta-background/vanta-background.component';
+import { PagoResultadoComponent } from './features/pagos/pago-resultado/pago-resultado.component'; // 👈 nuevo
 
 export const routes: Routes = [
   {
@@ -21,13 +22,20 @@ export const routes: Routes = [
       { path: 'registro', component: RegistroPageComponent },
       { path: 'cursos', component: CursosPageComponent },
 
+      // 👇 nuevo
+      {
+        path: 'pago/resultado',
+        component: PagoResultadoComponent,
+        canActivate: [roleGuard],
+        data: { roles: ['Aprendiz'] }
+      },
+
       {
         path: 'aprendiz',
         component: AprendizPageComponent,
         canActivate: [roleGuard],
         data: { roles: ['Aprendiz'] }
       },
-
       {
         path: 'mentor',
         component: MentorPageComponent,

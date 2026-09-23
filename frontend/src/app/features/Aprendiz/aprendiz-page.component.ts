@@ -8,6 +8,7 @@ import { Curso } from '../../models/curso.model';
 import { AuthService } from '../../core/services/auth.service';
 import { VantaBackgroundComponent } from '../../shared/components/vanta-background/vanta-background.component';
 import { NavbarComponent } from '../../layouts/navbar/navbar.component';
+import { PagoService } from '../../core/services/pago.service';
 
 @Component({
   selector: 'app-aprendiz-page',
@@ -24,7 +25,9 @@ export class AprendizPageComponent implements OnInit {
   constructor(
     private cursoService: CursoService,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private pagoService: PagoService
+
   ) { }
 
   ngOnInit() {
@@ -48,6 +51,18 @@ export class AprendizPageComponent implements OnInit {
       return;
     }
 
+    //Si el curso tiene precio, redirige a la pasarela de pago
+    const curso = this.cursos.find(c => c._id === cursoId);
+    if (curso && curso.precio > 0) {
+      this.pagoService.crearCheckout(cursoId).subscribe({
+        next: (res) => { window.location.href = res.data.checkoutUrl; },
+        error: (err) => alert(err?.error?.error?.message ?? 'No se pudo iniciar el pago, intenta de nuevo.')
+      });
+      return;
+    }
+
+
+
     // 👇 Si está logueado y en Aprendiz, registra en la BD
     this.cursoService.inscribir(cursoId).subscribe({
       next: (res) => {
@@ -62,7 +77,7 @@ export class AprendizPageComponent implements OnInit {
     });
   }
 
-  cancelarInscripcion(cursoId: string, inscritoId: string) {
+  cancelarInscripcion(cursoId: string, inscritoId: string) { 
     this.cursoService.cancelarInscripcion(cursoId, inscritoId).subscribe({
       next: (res: { data: { curso: Curso } }) => {
         console.log('Inscripción cancelada:', res);
