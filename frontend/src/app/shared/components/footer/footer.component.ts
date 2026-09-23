@@ -155,7 +155,7 @@ import { RouterModule } from '@angular/router';
       letter-spacing: -0.02em;
     }
 
-    .brand-name .accent { color: #00ED64; }
+    .brand-name .accent { color: var(--accent-cyan, #22D3EE); }
 
     .brand-desc {
       margin: 0;

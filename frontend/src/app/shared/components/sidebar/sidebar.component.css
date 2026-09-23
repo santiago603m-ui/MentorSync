@@ -83,9 +83,9 @@
 }
 
 .rail-btn.active {
-  background: rgba(0, 237, 100, 0.1);
-  color: #00ED64;
-  border-left-color: #00ED64;
+  background: rgba(34, 211, 238, 0.10);
+  color: var(--accent-cyan, #22D3EE);
+  border-left-color: var(--accent-cyan, #22D3EE);
 }
 
 .rail-spacer {
@@ -147,7 +147,7 @@
 }
 
 .brand-icon {
-  color: #00ED64;
+  color: var(--accent-cyan, #22D3EE);
   font-size: 1.1rem;
 }
 
@@ -211,17 +211,17 @@
 }
 
 .overview-btn.active {
-  background: rgba(0, 237, 100, 0.08);
+  background: rgba(34, 211, 238, 0.08);
   color: var(--text-primary);
-  border-color: rgba(0, 237, 100, 0.18);
-  border-left: 3px solid #00ED64;
+  border-color: rgba(34, 211, 238, 0.18);
+  border-left: 3px solid var(--accent-cyan, #22D3EE);
   border-radius: 0 8px 8px 0;
   margin-left: -1px;
   padding-left: calc(0.6rem + 1px);
 }
 
 .overview-btn.active i {
-  color: #00ED64;
+  color: var(--accent-cyan, #22D3EE);
 }
 
 /* Secciones colapsables */
@@ -238,7 +238,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #00ED64;
+  color: var(--accent-violet, #8B6BFF);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -301,9 +301,9 @@
 }
 
 .explorer-nav-item.active {
-  background: rgba(0, 237, 100, 0.1);
-  color: #00ED64;
-  border-left: 3px solid #00ED64;
+  background: linear-gradient(135deg, rgba(139, 107, 255, 0.12), rgba(34, 211, 238, 0.10));
+  color: var(--accent-cyan, #22D3EE);
+  border-left: 3px solid var(--accent-cyan, #22D3EE);
   border-radius: 0 8px 8px 0;
   margin-left: -1px;
   padding-left: calc(0.6rem + 1px);
@@ -321,7 +321,7 @@
 }
 
 .status-good {
-  color: #00ED64;
+  color: var(--accent-cyan, #22D3EE);
   font-weight: 700;
 }
 
