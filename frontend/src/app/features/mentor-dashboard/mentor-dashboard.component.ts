@@ -413,18 +413,37 @@ export class MentorDashboardQuickComponent {
                   </button>
                 </div>
 
+                @if (cargandoCursos) { <p class="text-muted" style="padding:1rem">Cargando tus cursos...</p> }
+                @if (errorCursos) { <p style="color:#f87171;padding:1rem">{{ errorCursos }} <button class="btn-cancel" (click)="cargarMisCursos()">Reintentar</button></p> }
+
                 <div class="courses-grid">
                   @for (c of cursos; track c.id) {
                     <div class="course-card">
                       <div class="course-body">
                         <h4>{{ c.nombre }}</h4>
-                        <p class="category"><i class="fas fa-tag"></i> {{ c.categoria }}</p>
+                        <p class="category"><i class="fas fa-tag"></i> {{ c.categoria }} · <span *ngIf="c.bot?.entrenado" class="badge badge-success" style="margin-left:0.4rem">IA entrenada</span><span *ngIf="!c.bot?.entrenado" class="badge badge-warning" style="margin-left:0.4rem">Sin IA</span></p>
+                        <p *ngIf="c.descripcion" style="font-size:0.8rem;color:#94a3b8;margin:0.4rem 0 0.8rem;line-height:1.45">{{ c.descripcion }}</p>
                         <div class="course-info">
                           <span><i class="fas fa-user-friends"></i> {{ c.alumnos }} Alumnos</span>
-                          <span class="badge badge-success">{{ c.estado }}</span>
+                          <select class="mini-select" style="padding:0.25rem 0.4rem;font-size:0.75rem;background:rgba(8,8,14,0.8);border:1px solid rgba(255,255,255,0.08);color:#cbd5e1;border-radius:6px" [ngModel]="c.estado === 'Activo' ? 'publicado' : 'borrador'" (ngModelChange)="cambiarEstadoCursoReal(c, $event)">
+                            <option value="borrador">Borrador</option>
+                            <option value="publicado">Publicado</option>
+                            <option value="archivado">Archivado</option>
+                          </select>
+                        </div>
+                        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.8rem">
+                          <label class="btn-cancel" style="font-size:0.72rem;padding:0.3rem 0.6rem;cursor:pointer">
+                            <i class="fas fa-upload"></i> PDF
+                            <input type="file" accept=".pdf" style="display:none" (change)="onArchivoSeleccionado($event, c)" />
+                          </label>
+                          <button class="btn-cancel" style="font-size:0.72rem;padding:0.3rem 0.6rem" (click)="subirPDF(c)" [disabled]="subiendoPDF || !archivoPDF || cursoSeleccionadoId !== (c._id || c.id)">{{ subiendoPDF && cursoSeleccionadoId === (c._id || c.id) ? 'Subiendo...' : 'Subir' }}</button>
+                          <button class="btn-cancel" style="font-size:0.72rem;padding:0.3rem 0.6rem" (click)="generarEstructura(c)" [disabled]="generandoId === c.id">{{ generandoId === c.id ? 'Generando...' : 'IA Estructura' }}</button>
+                          <button class="btn-cancel" style="font-size:0.72rem;padding:0.3rem 0.6rem;color:#f87171;border-color:rgba(239,68,68,0.2)" (click)="eliminarCursoReal(c)"><i class="fas fa-trash"></i></button>
                         </div>
                       </div>
                     </div>
+                  } @empty {
+                    @if (!cargandoCursos) { <p class="text-muted" style="grid-column:1/-1;text-align:center;padding:2rem">Aún no tienes cursos. ¡Crea el primero!</p> }
                   }
                 </div>
               </section>
@@ -565,6 +584,10 @@ export class MentorDashboardQuickComponent {
             <div class="form-group">
               <label>Nombre del Curso</label>
               <input type="text" [(ngModel)]="nuevoCurso.nombre" class="form-input" placeholder="Ej. Spring Boot API" />
+            </div>
+            <div class="form-group">
+              <label>Descripción (mín. 10 caracteres)</label>
+              <input type="text" [(ngModel)]="descripcionCurso" class="form-input" placeholder="Ej. API REST con Spring Boot y JWT" />
             </div>
             <div class="form-group">
               <label>Categoría</label>
@@ -1122,6 +1145,13 @@ export class MentorPageComponent implements OnInit {
   nuevaSesion = { courseId: '', titulo: '', fechaInicioProgramada: '', urlReunion: '' };
   linkGenerado: string | null = null;
   cargandoSesiones = false;
+  cargandoCursos = false;
+  errorCursos: string | null = null;
+  archivoPDF: File | null = null;
+  subiendoPDF = false;
+  generandoId: number | null = null;
+  cursoSeleccionadoId: string | null = null;
+  descripcionCurso = '';
 
   nuevoCurso: Partial<Curso> = { nombre: '', categoria: '' };
 
@@ -1186,16 +1216,81 @@ export class MentorPageComponent implements OnInit {
   }
 
   guardarCurso(): void {
-    if (this.nuevoCurso.nombre && this.nuevoCurso.categoria) {
-      this.cursos.push({
-        id: Date.now(),
-        nombre: this.nuevoCurso.nombre,
-        categoria: this.nuevoCurso.categoria,
-        estado: 'Activo',
-        alumnos: 0
-      });
-      this.mostrarModalCurso = false;
+    const titulo = this.nuevoCurso.nombre?.trim();
+    const categoria = this.nuevoCurso.categoria?.trim();
+    const descripcion = this.descripcionCurso.trim() || `Curso de ${categoria}`;
+    if (!titulo || !categoria) {
+      alert('Completa título y categoría');
+      return;
     }
+    this.cursoServiceReal.crearCurso({ titulo, descripcion, categoria }).subscribe({
+      next: () => {
+        this.mostrarModalCurso = false;
+        this.nuevoCurso = { nombre: '', categoria: '' };
+        this.descripcionCurso = '';
+        this.cargarMisCursos();
+      },
+      error: (err) => alert(err.error?.error?.message || 'No se pudo crear el curso'),
+    });
+  }
+
+  onArchivoSeleccionado(event: Event, curso: any): void {
+    const input = event.target as HTMLInputElement;
+    this.archivoPDF = input.files?.[0] ?? null;
+    this.cursoSeleccionadoId = curso._id || curso.id;
+  }
+
+  subirPDF(curso: any): void {
+    if (!this.archivoPDF || !curso._id) {
+      alert('Selecciona un PDF primero');
+      return;
+    }
+    this.subiendoPDF = true;
+    this.cursoServiceReal.subirDocumento(curso._id, this.archivoPDF).subscribe({
+      next: (res) => {
+        this.subiendoPDF = false;
+        alert(`PDF procesado: ${res.vistaPrevia?.totalFragmentos ?? 0} fragmentos`);
+        this.archivoPDF = null;
+        this.cargarMisCursos();
+      },
+      error: (err) => {
+        this.subiendoPDF = false;
+        alert(err.error?.error?.message || 'Error al subir PDF');
+      },
+    });
+  }
+
+  generarEstructura(curso: any): void {
+    const id = curso._id || curso.id;
+    this.generandoId = curso.id;
+    this.cursoServiceReal.generarEstructuraCurso(id).subscribe({
+      next: () => {
+        this.generandoId = null;
+        alert('Estructura generada con IA');
+        this.cargarMisCursos();
+      },
+      error: (err) => {
+        this.generandoId = null;
+        alert(err.error?.error?.message || 'No se pudo generar (necesita PDF previo)');
+      },
+    });
+  }
+
+  cambiarEstadoCursoReal(curso: any, nuevoEstado: 'borrador' | 'publicado' | 'archivado'): void {
+    const id = curso._id || curso.id;
+    this.cursoServiceReal.cambiarEstadoCurso(id, nuevoEstado).subscribe({
+      next: () => this.cargarMisCursos(),
+      error: (err) => alert(err.error?.error?.message || 'No se pudo cambiar estado'),
+    });
+  }
+
+  eliminarCursoReal(curso: any): void {
+    if (!confirm(`¿Eliminar "${curso.nombre || curso.titulo}"?`)) return;
+    const id = curso._id || curso.id;
+    this.cursoServiceReal.eliminarCurso(id).subscribe({
+      next: () => this.cargarMisCursos(),
+      error: (err) => alert(err.error?.error?.message || 'No se pudo eliminar'),
+    });
   }
 
   calificarEntrega(entrega: Entrega): void {
@@ -1213,10 +1308,64 @@ export class MentorPageComponent implements OnInit {
   constructor(private liveSessionService: LiveSessionService, private cursoServiceReal: CursoService, private router: Router) {}
 
   ngOnInit(): void {
-    this.cursoServiceReal.obtenerCursos().subscribe({
+    this.cargarMisCursos();
+    // Carga cursos para selector de sesiones (usa los mismos mis-cursos)
+    this.cursoServiceReal.obtenerMisCursos().subscribe({
       next: (cursos) => (this.cursosReales = cursos),
-      error: () => {},
+      error: () => (this.cursosReales = []),
     });
+  }
+
+  cargarMisCursos(): void {
+    this.cargandoCursos = true;
+    this.errorCursos = null;
+    this.cursoServiceReal.obtenerMisCursos().subscribe({
+      next: (reales) => {
+        this.cursosReales = reales;
+        // Mapea al formato mock para que el template y dashboard-quick sigan funcionando
+        this.cursos = reales.map((r) => ({
+          id: parseInt(r._id!.slice(-6), 16),
+          nombre: r.titulo,
+          categoria: r.categoria,
+          estado: r.estado === 'publicado' ? 'Activo' : 'Inactivo',
+          alumnos: (r as any).inscritos?.length ?? 0,
+          _id: r._id,
+          descripcion: r.descripcion,
+          bot: r.bot,
+        })) as any;
+        this.cargandoCursos = false;
+        // Actualiza aprendices derivados de inscritos reales
+        this.refrescarAprendicesDesdeCursos();
+      },
+      error: (err) => {
+        this.errorCursos = err.error?.error?.message || 'No se pudieron cargar tus cursos';
+        this.cargandoCursos = false;
+      },
+    });
+  }
+
+  private refrescarAprendicesDesdeCursos(): void {
+    const mapa = new Map<number, Aprendiz>();
+    for (const c of this.cursosReales) {
+      for (const ins of (c as any).inscritos ?? []) {
+        const idNum = parseInt((ins.id || ins._id || '').slice(-6), 16) || Date.now() + Math.random();
+        if (!mapa.has(idNum)) {
+          mapa.set(idNum, {
+            id: idNum,
+            nombre: ins.nombre,
+            curso: c.titulo,
+            novedad: 'Inscrito',
+            estado: 'Pendiente',
+          });
+        }
+      }
+    }
+    if (mapa.size > 0) {
+      const reales = Array.from(mapa.values());
+      // Combina con los mock si no hay duplicados
+      const existentes = new Set(this.aprendices.map((a) => a.nombre));
+      for (const r of reales) if (!existentes.has(r.nombre)) this.aprendices.push(r);
+    }
   }
 
   crearSesionVivo(): void {
