@@ -28,6 +28,7 @@
             "styles": [
               "src/styles.css"
             ],
+            "allowedCommonJsDependencies": ["vanta", "three", "vanta/dist/vanta.waves.min"],
             "security": {
               "allowedHosts": []
             }
@@ -37,13 +38,13 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
+                  "maximumWarning": "700kB",
                   "maximumError": "1MB"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "8kB"
+                  "maximumWarning": "22kB",
+                  "maximumError": "30kB"
                 }
               ],
               "outputHashing": "all"
