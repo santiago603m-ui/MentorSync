@@ -5,7 +5,7 @@ import { Observable } from 'rxjs';
 export type EstadoPago = 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' | 'ANULADO' | 'ERROR';
 
 export interface CheckoutRespuesta {
-  data: { accion: string; campos: Record<string, string>; referencia: string };
+  data: { accion: string; campos: Record<string, string>; referencia: string, checkoutUrl: string };
 }
 
 export interface EstadoPagoRespuesta {

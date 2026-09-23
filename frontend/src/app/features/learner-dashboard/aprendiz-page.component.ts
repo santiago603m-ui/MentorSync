@@ -6,13 +6,10 @@ import { FilterPipe } from '../../shared/pipes/filter.pipe';
 import { CursoService } from '../../core/services/curso.service';
 import { Curso } from '../../models/curso.model';
 import { AuthService } from '../../core/services/auth.service';
-<<<<<<< HEAD:frontend/src/app/features/Aprendiz/aprendiz-page.component.ts
 import { VantaBackgroundComponent } from '../../shared/components/vanta-background/vanta-background.component';
 import { NavbarComponent } from '../../layouts/navbar/navbar.component';
 import { PagoService } from '../../core/services/pago.service';
-=======
 import { LiveSessionService } from '../../core/services/live-session.service';
->>>>>>> origin/main:frontend/src/app/features/learner-dashboard/aprendiz-page.component.ts
 
 @Component({
   selector: 'app-aprendiz-page',
@@ -31,12 +28,8 @@ export class AprendizPageComponent implements OnInit {
     private cursoService: CursoService,
     private authService: AuthService,
     private router: Router,
-<<<<<<< HEAD:frontend/src/app/features/Aprendiz/aprendiz-page.component.ts
-    private pagoService: PagoService
-
-=======
-    private liveSessionService: LiveSessionService
->>>>>>> origin/main:frontend/src/app/features/learner-dashboard/aprendiz-page.component.ts
+    private pagoService: PagoService,
+  private liveSessionService: LiveSessionService
   ) { }
 
   ngOnInit() {
