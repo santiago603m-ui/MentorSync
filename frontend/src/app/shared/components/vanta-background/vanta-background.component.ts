@@ -116,6 +116,19 @@ export class VantaBackgroundComponent implements AfterViewInit, OnDestroy, OnIni
       this.theme.mode();
       if (this.vistaLista) void this.recrearEfecto();
     });
+    effect(() => {
+      // Reacciona a cambios de ruta (home/auth ↔ resto)
+      this.solidBg();
+      if (!this.vistaLista) return;
+      if (this.solidBg()) {
+        this.efectoVanta?.destroy();
+        this.efectoVanta = null;
+        this.vantaRef.nativeElement.classList.remove('is-ready');
+      } else {
+        void this.recrearEfecto();
+        requestAnimationFrame(() => this.vantaRef.nativeElement.classList.add('is-ready'));
+      }
+    });
   }
 
   ngOnInit(): void {
@@ -185,8 +198,8 @@ export class VantaBackgroundComponent implements AfterViewInit, OnDestroy, OnIni
     if (!ctx) return;
 
     const bg = '#0B1020';
-    const c1 = { r: 0x38, g: 0xbd, b: 0xf8 };
-    const c2 = { r: 0x81, g: 0x8c, b: 0xf8 };
+    const c1 = { r: 0x7b, g: 0x38, b: 0xf8 }; // #7b38f8
+    const c2 = { r: 0x36, g: 0x00, b: 0xff }; // #3600ff
     let raf = 0;
     let t = 0;
     let mouseX = 0.5, mouseY = 0.5, targetX = 0.5, targetY = 0.5;
