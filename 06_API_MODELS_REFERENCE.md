@@ -32,31 +32,37 @@ Todos los modelos usan sintaxis ESM (`import`/`export default`) — obligatorio 
 |---|---|---|
 | `nombre` | String, requerido | `trim` |
 | `email` | String, requerido, único | `lowercase`, `trim` |
-| `contraseñaHash` | String, requerido | `select: false` — nunca se trae en un `find()` normal, hay que pedirlo con `.select('+contraseñaHash')` |
+| `contraseñaHash` | String, requerido | `select: false` — hay que pedirlo con `.select('+contraseñaHash')` |
 | `rol` | enum `aprendiz` \| `mentor` \| `administrador` | default `aprendiz` |
-| `perfilMentor` | subdocumento `{ bio, especialidad, verificado }` | `default: undefined` → los aprendices no cargan este subdocumento en absoluto (no es que quede vacío, es que no existe) |
-| `activo` | Boolean | default `true`. Borrado lógico: `login()` en `auth.service.js` solo permite `activo: true` |
+| `perfilMentor` | subdocumento `{ bio, especialidad, verificado }` | `default: undefined` → no existe en aprendices |
+| `activo` | Boolean | default `true`. Borrado lógico (login y `user.repository` respetan) |
 | `createdAt` / `updatedAt` | Date | automáticos (`timestamps: true`) |
-
-Sin métodos de instancia/estáticos custom — es un modelo "plano", toda la lógica vive en `auth.service.js`.
 
 ### `course.model.js` → `Curso` (colección real: `cursos`)
 
 | Campo | Tipo | Notas |
 |---|---|---|
-| `titulo` | String, requerido | máx 120 |
-| `descripcion` | String, requerido | máx 2000 |
-| `categoria` | String, requerido | |
+| `titulo` | String, requerido | máx 120, `trim` |
+| `descripcion` | String, requerido | máx 2000, `trim` |
+| `categoria` | String, requerido | `trim` |
 | `mentor` | ObjectId → ref `Usuario`, requerido | |
 | `portadaUrl` | String \| null | default `null` |
-| `estado` | enum `borrador` \| `publicado` \| `archivado` | default `borrador` |
+| `estado` | enum `borrador` \| `publicado` \| `archivado` | default `publicado` |
 | `precio` | Number | default `0`, `min: 0` |
 | `duracionEstimadaHoras` | Number | default `0`, `min: 0` |
-| `bot.entrenado` | Boolean | default `false` — se marca `true` cuando termine el pipeline RAG |
+| `contenidoTextoPlano` | String \| null | texto extraído del PDF para generar estructura con Groq |
+| `modulos` | [moduloSchema] | ver subesquemas abajo |
+| `bot.entrenado` | Boolean | default `false` |
 | `bot.fechaEntrenamiento` | Date \| null | |
 | `bot.documentoOrigenNombre` | String \| null | |
 | `bot.totalChunks` | Number | default `0` |
-| `activo` | Boolean | default `true`. Borrado lógico (ver `eliminarLogico` en el repository) |
+| `activo` | Boolean | default `true`. Borrado lógico |
+| `inscritos` | [inscritoSchema] | embebido con `_id` propio (ver abajo) |
+
+Subesquemas:
+- `moduloSchema: { titulo: String requerido, descripcion: String, orden: Number, lecciones: [leccionSchema] }`
+- `leccionSchema: { titulo: String requerido, contenido: String requerido, puntosClave: [String], orden: Number }`
+- `inscritoSchema: { id: ObjectId→Usuario requerido, nombre: String, correo: String }` con `{_id:true}` — se manipula con `$addToSet` / `$pull:{_id}`
 
 Índices: `{ mentor: 1 }`, `{ estado: 1 }`.
 
@@ -67,11 +73,11 @@ Sin métodos de instancia/estáticos custom — es un modelo "plano", toda la l�
 | `userId` | ObjectId → ref `Usuario`, requerido | |
 | `courseId` | ObjectId → ref `Curso`, requerido | |
 | `estado` | enum `activo` \| `completado` \| `suspendido` | default `activo` |
-| `progreso` | Number | default `0`, porcentaje 0-100 (sin validación de rango en el schema todavía) |
+| `progreso` | Number | default `0`, sin validación de rango |
 
-Índice compuesto único `{ userId: 1, courseId: 1 }` — un usuario no puede inscribirse dos veces al mismo curso.
+Índice único `{ userId: 1, courseId: 1 }` — hoy no se usa (inscripciones van embebidas en `cursos.inscritos`).
 
-**Estado de integración:** modelo definido, pero todavía sin repository/service/controller/route propios. No se usa desde ningún endpoint activo.
+**Estado:** solo modelo, sin repository/service/controller.
 
 ### `liveSession.model.js` → `LiveSession` (colección real: `livesessions`)
 
@@ -85,24 +91,24 @@ Sin métodos de instancia/estáticos custom — es un modelo "plano", toda la l�
 | `fechaInicioReal` | Date | |
 | `fechaFin` | Date | |
 | `urlReunion` | String | |
-| `transcript` | String | opcional, si se logra grabar/transcribir la sesión |
+| `transcript` | String | |
 | `asistentes` | [ObjectId → ref `Usuario`] | |
 
-**Estado de integración:** solo el modelo existe. Sin repository/service/controller/route ni sockets todavía (`src/sockets/` está vacío).
+**Estado:** solo modelo.
 
 ### `chatMessage.model.js` → `ChatMessage` (colección real: `chatmessages`)
 
 | Campo | Tipo | Notas |
 |---|---|---|
 | `courseId` | ObjectId → ref `Curso`, requerido | |
-| `threadId` | String, indexado | agrupa una conversación con el bot |
-| `liveSessionId` | ObjectId → ref `LiveSession` | null si es chat directo con el bot fuera de una sesión en vivo |
-| `remitenteId` | ObjectId → ref `Usuario` | null si el remitente es el bot |
+| `threadId` | String, indexado | agrupa conversación |
+| `liveSessionId` | ObjectId → ref `LiveSession` | null fuera de sesión |
+| `remitenteId` | ObjectId → ref `Usuario` | null si es bot |
 | `rolRemitente` | enum `aprendiz` \| `mentor` \| `bot`, requerido | |
 | `contenido` | String, requerido | |
 | `esRespuestaBot` | Boolean | default `false` |
 
-**Estado de integración:** solo el modelo existe, sin capa de servicio todavía.
+**Estado:** ✅ Tiene repository (`chatMessage.repository.js`) + service (`chat.service.js`) + controller + routes.
 
 ### `document.model.js` → `Document` (colección real: `documents`)
 
@@ -113,284 +119,312 @@ Sin métodos de instancia/estáticos custom — es un modelo "plano", toda la l�
 | `nombreOriginal` | String, requerido | |
 | `fileUrl` | String, requerido | |
 | `tipo` | enum `pdf` \| `txt` \| `enlace` | default `pdf` |
-| `estado` | enum `pendiente` \| `procesando` \| `completado` \| `error` | default `pendiente` — refleja el avance del job de chunking/embeddings |
-| `errorMessage` | String | motivo del fallo si el job de procesamiento falla |
+| `estado` | enum `pendiente` \| `procesando` \| `completado` \| `error` | |
+| `errorMessage` | String | |
 
-**Estado de integración:** ✅ **IMPLEMENTADO** — Tiene repository (`document.repository.js`), service (`document.service.js`), controller (`document.controller.js`) y routes (`document.routes.js`). El flujo completo de subida de PDF, extracción de texto, chunking y generación de embeddings está funcional.
+**Estado:** ✅ Tiene repository + service + controller + routes.
 
 ### `knowledgeChunk.model.js` → `KnowledgeChunk` (colección real: `knowledgechunks`)
 
 | Campo | Tipo | Notas |
 |---|---|---|
-| `courseId` | ObjectId → ref `Curso`, requerido | filtro obligatorio en toda query RAG (ver `03_BACKEND_GUIDELINES.md`) |
+| `courseId` | ObjectId → ref `Curso`, requerido | filtro obligatorio en RAG |
 | `documentId` | ObjectId → ref `Document`, requerido | |
-| `texto` | String, requerido | fragmento del documento original |
-| `embedding` | [Number], requerido | vector de 384 dimensiones con `Xenova/all-MiniLM-L6-v2` |
+| `texto` | String, requerido | fragmento |
+| `embedding` | [Number], requerido | 384D `Xenova/all-MiniLM-L6-v2` |
 | `metadata.pagina` | Number | |
 | `metadata.seccion` | String | |
 
-El índice de Vector Search sobre `embedding` se crea manualmente en MongoDB Atlas, no vía Mongoose (ver `04_DATABASE_SCHEMA.md`).
+Índice Vector Search sobre `embedding` (ver `04_DATABASE_SCHEMA.md`).
 
-**Estado de integración:** ✅ **IMPLEMENTADO** — Tiene repository (`knowledgeChunk.repository.js`). Los chunks se generan automáticamente cuando un mentor sube un PDF vía `POST /api/cursos/:cursoId/documentos`. El service `embedding.service.js` genera los vectores con `@xenova/transformers` (modelo `Xenova/all-MiniLM-L6-v2`).
+**Estado:** ✅ Tiene repository (`knowledgeChunk.repository.js`) + `embedding.service.js`.
 
 ---
 
 ## 2. Repositories
 
-Capa que encapsula el acceso a Mongoose. Los services nunca deben importar un modelo directamente (regla de `03_BACKEND_GUIDELINES.md`).
+Capa que encapsula Mongoose. Los services nunca importan modelos directos.
 
-### `auth.repository.js` → `AuthRepository` (exporta instancia única `new AuthRepository()`)
+### `auth.repository.js` → `AuthRepository` (singleton)
 
 | Método | Firma | Qué hace |
 |---|---|---|
-| `buscarPorEmail` | `(email)` | `Usuario.findOne({ email })` — busca por email sin filtrar por `activo` |
-| `buscarPorEmailConContraseña` | `(email)` | `Usuario.findOne({ email, activo: true }).select('+contraseñaHash')` — trae explícitamente el campo `contraseñaHash` que tiene `select: false` en el schema. Solo permite usuarios activos (respeta borrado lógico) |
-| `crear` | `(datosUsuario)` | `new Usuario(datosUsuario).save()` — crea y guarda un nuevo usuario |
+| `buscarPorEmail` | `(email)` | `Usuario.findOne({ email })` |
+| `buscarPorEmailConContraseña` | `(email)` | `findOne({ email, activo:true }).select('+contraseñaHash')` |
+| `crear` | `(datosUsuario)` | `new Usuario(datosUsuario).save()` |
 
-### `course.repository.js` → `CursoRepository` (exporta instancia única `new CursoRepository()`)
+### `user.repository.js` → `UsuarioRepository` (singleton) — **nuevo módulo admin**
+
+| Método | Firma | Qué hace |
+|---|---|---|
+| `listar` | `({ rol, busqueda, pagina, limite, soloActivos })` | Construye `filtros` (`rol`, `activo`, `$or` regex `nombre`/`email`), `Promise.all([find().select('-contraseñaHash -__v').sort(createdAt:-1).skip().limit().lean(), countDocuments])` → `{usuarios, total, pagina, limite}` |
+| `contarPorRol` | `()` | `aggregate([{ $group:{_id:'$rol', total:{$sum:1}} }])` → `{administrador, mentor, aprendiz, total}` |
+| `buscarPorId` | `(id)` | `findById(id).select('-contraseñaHash -__v')` |
+| `actualizar` | `(id, cambios)` | `findByIdAndUpdate(id, cambios, {new:true, runValidators:true}).select(...)` |
+| `fechasRegistro` | `()` | `find({}, {createdAt:1}).lean()` (para graficar crecimiento) |
+
+### `course.repository.js` → `CursoRepository` (singleton)
 
 | Método | Firma | Qué hace |
 |---|---|---|
 | `crear` | `(datosCurso)` | `Curso.create(datosCurso)` |
-| `buscarPorId` | `(id)` | Busca por `_id` + `activo: true`, hace `populate('mentor', 'nombre email')` |
-| `listarPublicados` | `({ pagina = 1, limite = 12 } = {})` | Filtra `estado: 'publicado', activo: true`, `populate('mentor', 'nombre')`, ordena por `createdAt` descendente, paginado con `skip`/`limit` |
-| `listarPorMentor` | `(mentorId)` | Filtra `mentor: mentorId, activo: true`, ordena por `createdAt` descendente |
-| `actualizar` | `(id, cambios)` | `findOneAndUpdate({ _id: id, activo: true }, cambios, { new: true, runValidators: true })` |
-| `eliminarLogico` | `(id)` | `findOneAndUpdate({ _id: id }, { activo: false }, { new: true })` — no borra el documento, solo lo desactiva |
-| `marcarBotEntrenado` | `(id, { totalChunks, documentoOrigenNombre })` | Actualiza `bot.entrenado`, `bot.fechaEntrenamiento`, `bot.totalChunks`, `bot.documentoOrigenNombre`. Pensado para que lo use el futuro pipeline RAG al terminar de generar embeddings — todavía no tiene ningún caller |
+| `buscarPorId` | `(id)` | `findOne({_id:id, activo:true}).populate('mentor','nombre email')` |
+| `listarPublicados` | `({ pagina, limite })` | `find({estado:'publicado', activo:true}).populate('mentor','nombre').sort(createdAt:-1).skip().limit()` |
+| `listarPorMentor` | `(mentorId)` | `find({mentor:mentorId, activo:true}).sort(createdAt:-1)` |
+| `listarTodos` | `()` | `find({activo:true}).populate('mentor','nombre email').sort(createdAt:-1)` — usado por admin |
+| `actualizar` | `(id, cambios)` | `findOneAndUpdate({_id:id, activo:true}, cambios, {new:true, runValidators:true})` |
+| `eliminarLogico` | `(id)` | `findOneAndUpdate({_id:id}, {activo:false}, {new:true})` |
+| `inscribirAprendiz` | `(cursoId, aprendiz {id,nombre,correo})` | `findByIdAndUpdate(cursoId, {$addToSet:{inscritos:aprendiz}}, {new:true}).populate(...)` |
+| `cancelarInscripcion` | `(cursoId, inscritoId)` | `findByIdAndUpdate(cursoId, {$pull:{inscritos:{_id:inscritoId}}}, {new:true}).populate(...)` |
+| `marcarBotEntrenado` | `(id, {totalChunks, documentoOrigenNombre})` | `$set` en `bot.*` + `fechaEntrenamiento` |
 
-### `document.repository.js` → `DocumentRepository` (exporta instancia única)
+### `document.repository.js` → `DocumentRepository`
 
 | Método | Firma | Qué hace |
 |---|---|---|
 | `crear` | `(datosDocumento)` | `Document.create(datosDocumento)` |
-| `buscarPorId` | `(id)` | `Document.findById(id).populate('courseId', 'titulo')` |
-| `listarPorCurso` | `(courseId)` | Filtra `{ courseId }`, ordena por `createdAt` descendente |
-| `actualizarEstado` | `(id, { estado, errorMessage?, fileUrl? })` | `findByIdAndUpdate` con `{ new: true, runValidators: true }`. Actualiza `estado` y opcionalmente `errorMessage` y/o `fileUrl` |
+| `buscarPorId` | `(id)` | `findById(id).populate('courseId','titulo')` |
+| `listarPorCurso` | `(courseId)` | `find({courseId}).sort(createdAt:-1)` |
+| `actualizarEstado` | `(id, {estado, errorMessage?, fileUrl?})` | `findByIdAndUpdate(..., {new:true, runValidators:true})` |
 
-### `knowledgeChunk.repository.js` → `KnowledgeChunkRepository` (exporta instancia única)
-
-| Método | Firma | Qué hace |
-|---|---|---|
-| `guardarLote` | `(chunks)` | `KnowledgeChunk.insertMany(chunks)` — guarda todos los chunks de un documento en una sola operación |
-| `buscarPorDocumento` | `(documentId)` | `KnowledgeChunk.find({ documentId })` — devuelve todos los chunks de un documento específico |
-| `eliminarPorDocumento` | `(documentId)` | `KnowledgeChunk.deleteMany({ documentId })` — borra todos los chunks de un documento (útil si se re-sube el PDF) |
-| `buscarSimilares` | `(courseId, vectorPregunta, limite = 5)` | **Búsqueda vectorial** con MongoDB Atlas `$vectorSearch`: filtra por `courseId` (obligatorio), busca los `limite` chunks más similares al `vectorPregunta` usando índice `vector_index` (cosine similarity), `numCandidates = limite * 20`, devuelve `texto`, `metadata`, `documentId` y `score` |
-
-### `chatMessage.repository.js` → `ChatMessageRepository` (exporta instancia única)
+### `knowledgeChunk.repository.js` → `KnowledgeChunkRepository`
 
 | Método | Firma | Qué hace |
 |---|---|---|
-| `crear` | `(datosMensaje)` | `ChatMessage.create(datosMensaje)` — guarda un nuevo mensaje (pregunta del aprendiz o respuesta del bot) |
-| `listarPorThread` | `(threadId)` | `ChatMessage.find({ threadId }).sort({ createdAt: 1 })` — devuelve todos los mensajes de un hilo ordenados cronológicamente |
-| `listarPorCurso` | `(courseId, limite = 50)` | `ChatMessage.find({ courseId }).sort({ createdAt: -1 }).limit(limite)` — devuelve los últimos `limite` mensajes de un curso (para analítica/moderación) |
+| `guardarLote` | `(chunks)` | `insertMany(chunks)` |
+| `buscarPorDocumento` | `(documentId)` | `find({documentId})` |
+| `eliminarPorDocumento` | `(documentId)` | `deleteMany({documentId})` |
+| `buscarSimilares` | `(courseId, vectorPregunta, limite=5)` | `$vectorSearch` con `filter:{courseId}`, `index:vector_index`, `numCandidates=limite*20`, cosine → `texto`, `metadata`, `documentId`, `score` |
 
----
+### `chatMessage.repository.js` → `ChatMessageRepository`
+
+| Método | Firma | Qué hace |
+|---|---|---|
+| `crear` | `(datosMensaje)` | `ChatMessage.create(datosMensaje)` |
+| `listarPorThread` | `(threadId)` | `find({threadId}).sort({createdAt:1})` |
+| `listarPorCurso` | `(courseId, limite=50)` | `find({courseId}).sort({createdAt:-1}).limit(limite)` |
 
 ---
 
 ## 3. Services
 
-Contienen la lógica de negocio. Reciben datos ya validados por los validators.
-
-### `auth.service.js` → `AuthService` (exporta instancia única)
+### `auth.service.js` → `AuthService`
 
 | Método | Firma | Qué hace |
 |---|---|---|
-| `hashearContraseña` *(función privada del módulo, no del objeto)* | `(contraseña)` | `bcrypt.genSalt(10)` + `bcrypt.hash` |
-| `generarToken` *(función privada)* | `(usuario)` | Firma un JWT con payload `{ id, rol, email }`, `expiresIn` = `process.env.JWT_EXPIRES_IN` o `'7d'` |
-| `serializarUsuario` *(función privada)* | `(usuarioDoc)` | Convierte el doc de Mongoose a objeto plano y borra `contraseñaHash` y `__v` antes de devolverlo al cliente |
-| `registrar` | `(datos)` | Verifica que el email no exista (`409` si ya existe), hashea la contraseña, crea el usuario (con `perfilMentor` solo si `rol === 'mentor'`), devuelve el usuario serializado (sin hash) |
-| `iniciarSesion` | `(credenciales)` | Busca el usuario por `email` + `activo: true` trayendo explícitamente `contraseñaHash` (por el `select:false` del schema), compara con `bcrypt.compare`. Mismo mensaje de error (`401`) tanto si el usuario no existe como si la contraseña es incorrecta, para no filtrar qué correos están registrados. Devuelve `{ token, usuario }` |
+| `hashearContraseña` *(privada)* | `(contraseña)` | `bcrypt.genSalt(10)` + `hash` |
+| `generarToken` *(privada)* | `(usuario)` | JWT `{id, rol, email}`, `expiresIn=JWT_EXPIRES_IN \|\| '7d'` |
+| `serializarUsuario` *(privada)* | `(doc)` | `toObject()` y borra `contraseñaHash`, `__v` |
+| `registrar` | `(datos)` | Verifica email duplicado (409), hashea, crea con `perfilMentor` solo si `rol==='mentor'`, serializa |
+| `iniciarSesion` | `(credenciales)` | Busca `activo:true` trayendo hash, `bcrypt.compare`, mismo mensaje 401 para no filtrar emails, devuelve `{token, usuario}` |
 
-### `course.service.js` → `CursoService` (exporta instancia única)
-
-| Método | Firma | Qué hace |
-|---|---|---|
-| `crearCurso` | `(mentorId, datosCurso)` | Delega a `cursoRepository.crear`, inyectando `mentor: mentorId` |
-| `obtenerCursoPorId` | `(id)` | Delega a `cursoRepository.buscarPorId`; lanza `AppError('Curso no encontrado', 404)` si no existe |
-| `listarCursosPublicados` | `(opcionesPaginacion)` | Delega a `cursoRepository.listarPublicados` |
-| `listarCursosDeMentor` | `(mentorId)` | Delega a `cursoRepository.listarPorMentor` |
-| `actualizarCurso` | `(id, mentorId, cambios)` | Obtiene el curso, verifica propiedad (`verificarPropiedad`), delega a `cursoRepository.actualizar` |
-| `cambiarEstado` | `(id, mentorId, estado)` | Igual que `actualizarCurso` pero solo cambia el campo `estado` |
-| `eliminarCurso` | `(id, mentorId)` | Verifica propiedad, delega a `cursoRepository.eliminarLogico` (soft delete) |
-| `verificarPropiedad` | `(curso, mentorId)` | Compara `curso.mentor` (o `curso.mentor._id` si viene populado) contra `mentorId`; lanza `AppError('No tienes permiso sobre este curso', 403)` si no coincide. El rol `administrador` como bypass de esta regla NO está implementado — ver sección 11 |
-
-### `document.service.js` → `DocumentService` (exporta instancia única)
+### `user.service.js` → `UsuarioService` — **nuevo**
 
 | Método | Firma | Qué hace |
 |---|---|---|
-| `subirDocumento` | `(mentorId, cursoId, archivo)` | 1. Verifica que el curso exista y pertenezca al mentor. 2. Crea un registro `Document` en estado `pendiente`. 3. Sube el buffer del PDF a Cloudinary (carpeta `mentorsync/documentos`). 4. Extrae el texto con `pdf-parse`. 5. Fragmenta el texto con `textChunker.fragmentarTexto` (chunks de 1000 caracteres con overlap de 200). 6. Genera embeddings para cada chunk con `embeddingService.generarEmbedding`. 7. Guarda los chunks en lote con `knowledgeChunkRepository.guardarLote`. 8. Actualiza el documento a estado `completado` con la URL de Cloudinary. 9. Devuelve `{ documento, vistaPrevia: { totalPaginas, totalCaracteres, totalFragmentos, dimensionesEmbedding, fragmento } }`. Si algo falla, marca el documento como `error` y lanza `AppError(500)` |
-| `listarDocumentosDeCurso` | `(cursoId, mentorId)` | Verifica propiedad del curso, delega a `documentRepository.listarPorCurso` |
+| `listarUsuarios` | `({ rol, busqueda, pagina, limite })` | Valida `rol` en `['aprendiz','mentor','administrador']` → 400, pagina/limite seguros (limite max 200), delega a `usuarioRepository.listar` |
+| `resumenRoles` | `()` | `usuarioRepository.contarPorRol()` |
+| `obtenerPorId` | `(id)` | `buscarPorId` → 404 si no existe |
+| `crearUsuario` | `({ nombre, email, contraseña, rol })` | Verifica duplicado (409), `bcrypt.genSalt(10)+hash`, `authRepository.crear` con `perfilMentor` si `mentor`, borra hash antes de devolver |
+| `cambiarRol` | `(id, nuevoRol, solicitanteId)` | No a sí mismo (403), verifica existencia (404), `usuarioRepository.actualizar(id, {rol:nuevoRol})` |
+| `cambiarEstado` | `(id, activo, solicitanteId)` | No desactivarse a sí mismo (`activo===false` + self → 403), verifica existencia, `actualizar(id, {activo})` |
 
-### `embedding.service.js` → `EmbeddingService` (exporta instancia única, Singleton pattern)
-
-| Método | Firma | Qué hace |
-|---|---|---|
-| `obtenerExtractor` | `()` | Inicializa el pipeline de `@xenova/transformers` con el modelo `Xenova/all-MiniLM-L6-v2` (descarga y cachea localmente la primera vez). Devuelve la instancia del extractor. Singleton pattern: solo inicializa una vez, aunque se llame múltiples veces |
-| `generarEmbedding` | `(texto)` | Recibe un string, devuelve un `Array<number>` de 384 dimensiones (vector/embedding). Usa `pooling: 'mean'` y `normalize: true` |
-
-### `rag.service.js` → `RagService` (exporta instancia única)
+### `course.service.js` → `CursoService`
 
 | Método | Firma | Qué hace |
 |---|---|---|
-| `responderPregunta` | `(cursoId, pregunta)` | **Pipeline RAG completo**: 1. Valida que la pregunta tenga al menos 3 caracteres. 2. Verifica que el curso exista (`cursoService.obtenerCursoPorId`). 3. Embebe la pregunta con `embeddingService.generarEmbedding`. 4. Busca los 5 chunks más relevantes con `knowledgeChunkRepository.buscarSimilares` (filtrando solo ese `courseId`). 5. Si no hay chunks, devuelve mensaje de "curso sin material". 6. Arma prompt con contexto + pregunta + instrucciones. 7. Llama a `groqProvider.generarRespuesta`. 8. Devuelve `{ respuesta, fragmentosUsados }` (con `documentId`, `score` y vista previa de cada fragmento usado) |
-| `armarPrompt` *(función privada)* | `(pregunta, chunks)` | Construye el array de mensajes para el modelo: mensaje `system` con instrucciones (responder solo con base en contexto, no inventar, markdown cuando ayude) + mensaje `user` con contexto del curso (chunks formateados como `[Fragmento N]`) + pregunta del aprendiz |
+| `crearCurso` | `(mentorId, datosCurso)` | `cursoRepository.crear({ ...datosCurso, mentor:mentorId })` |
+| `obtenerCursoPorId` | `(id)` | `buscarPorId` → 404 si no existe |
+| `listarCursosPublicados` | `(opciones)` | delega a `listarPublicados` |
+| `listarCursosDeMentor` | `(mentorId)` | delega a `listarPorMentor` |
+| `listarTodos` | `()` | `cursoRepository.listarTodos()` (admin) |
+| `inscribirAprendiz` | `(cursoId, aprendiz)` | Verifica curso existe, verifica `inscritos.some(i=>i.id===aprendiz.id)` (no duplicar), `$addToSet` |
+| `cancelarInscripcion` | `(cursoId, inscritoId)` | `$pull` por `_id` de subdocumento |
+| `actualizarCurso` | `(id, mentorId, cambios, rol)` | `verificarPropiedad(curso, mentorId, rol)` → `actualizar` |
+| `cambiarEstado` | `(id, mentorId, estado, rol)` | verifica propiedad → `actualizar(id,{estado})` |
+| `eliminarCurso` | `(id, mentorId, rol)` | verifica propiedad → `eliminarLogico` |
+| `generarEstructuraCurso` | `(id, mentorId, rol)` | verifica propiedad, valida `contenidoTextoPlano` existe (400 si no), arma prompt Groq con `contenidoTextoPlano.substring(0,25000)`, `groq.chat.completions.create({model:'llama-3.3-70b-versatile', response_format:{type:'json_object'}, temp:0.3})`, `JSON.parse`, `actualizar(id, {modulos:resultado.modulos, bot:{entrenado:true, fechaEntrenamiento:new Date()}})` |
+| `verificarPropiedad` | `(curso, mentorId, rol)` | Si `rol==='administrador'` return (bypass); compara `curso.mentor._id||curso.mentor` vs `mentorId` → 403 |
 
-### `groq.provider.js` → `GroqProvider` (exporta instancia única, implementa `IAssistantProvider`)
+### `document.service.js` → `DocumentService`
 
 | Método | Firma | Qué hace |
 |---|---|---|
-| `obtenerCliente` | `()` | Inicializa perezosamente el cliente de Groq con `process.env.GROQ_API_KEY`. Si la clave no está configurada, lanza `AppError(503, 'GROQ_NOT_CONFIGURED')`. Singleton: solo crea el cliente una vez |
-| `generarRespuesta` | `(mensajes, opciones = {})` | Llama a `groq.chat.completions.create` con `model` (default `GROQ_MODEL` de `.env`), `messages`, `temperature` (default 0.3), `max_tokens` (default 1024). Devuelve el `content` del primer `choice`. Si la respuesta está vacía, lanza `AppError(502, 'GROQ_EMPTY_RESPONSE')`. Si falla la request, lanza `AppError(502, 'GROQ_REQUEST_FAILED')` |
+| `subirDocumento` | `(mentorId, cursoId, archivo)` | Verifica propiedad, crea `Document` pendiente, sube a Cloudinary `resource_type:'raw'`, `pdf-parse`, `fragmentarTexto(1000,200)`, `embeddingService.generarEmbedding` por chunk, `guardarLote`, actualiza `estado:'completado'` → devuelve `{documento, vistaPrevia}`; en catch marca `error` |
+| `listarDocumentosDeCurso` | `(cursoId, mentorId)` | verifica propiedad → `listarPorCurso` |
 
-### `chat.service.js` → `ChatService` (exporta instancia única)
+### `embedding.service.js` → `EmbeddingService` (Singleton)
 
 | Método | Firma | Qué hace |
 |---|---|---|
-| `enviarPregunta` | `(cursoId, aprendizId, pregunta, threadId?)` | 1. Verifica que el curso exista y esté publicado (`estado: 'publicado'`), lanza `AppError(403, 'COURSE_NOT_PUBLISHED')` si no lo está. 2. Si no viene `threadId`, genera uno nuevo con `randomUUID()` (UUID v4). 3. Guarda la pregunta del aprendiz en `chatmessages`. 4. Llama a `ragService.responderPregunta` para obtener respuesta + fragmentos. 5. Guarda la respuesta del bot en `chatmessages` (con `remitenteId: null`, `rolRemitente: 'bot'`, `esRespuestaBot: true`). 6. Devuelve `{ threadId, respuesta, mensajeId, fragmentosUsados }` |
-| `obtenerHistorial` | `(threadId)` | Delega a `chatMessageRepository.listarPorThread` — devuelve todos los mensajes del hilo ordenados por fecha |
+| `obtenerExtractor` | `()` | Inicializa `Xenova/all-MiniLM-L6-v2` una vez, cachea |
+| `generarEmbedding` | `(texto)` | `pooling:'mean', normalize:true` → `Array<number>` 384D |
+
+### `rag.service.js` → `RagService`
+
+| Método | Firma | Qué hace |
+|---|---|---|
+| `responderPregunta` | `(cursoId, pregunta)` | Valida pregunta ≥3, verifica curso, embed pregunta, `buscarSimilares(courseId, vector, 5)`, si vacío → mensaje sin material, arma prompt, `groqProvider.generarRespuesta` → `{respuesta, fragmentosUsados}` |
+| `armarPrompt` *(privada)* | `(pregunta, chunks)` | system + context `[Fragmento N]` + user pregunta |
+
+### `groq.provider.js` → `GroqProvider` (implementa `IAssistantProvider`)
+
+| Método | Firma | Qué hace |
+|---|---|---|
+| `obtenerCliente` | `()` | Lazily `new Groq({apiKey:GROQ_API_KEY})` → 503 si falta |
+| `generarRespuesta` | `(mensajes, opciones)` | `groq.chat.completions.create({model:GROQ_MODEL, messages, temperature:0.3, max_tokens:1024})` → `choices[0].message.content`; 502 si vacía/falla |
+
+### `chat.service.js` → `ChatService`
+
+| Método | Firma | Qué hace |
+|---|---|---|
+| `enviarPregunta` | `(cursoId, aprendizId, pregunta, threadId?)` | Valida curso existe y `estado==='publicado'` (403 si no), genera `threadId=randomUUID()` si falta, guarda pregunta, llama `ragService.responderPregunta`, guarda respuesta bot → `{threadId, respuesta, mensajeId, fragmentosUsados}` |
+| `obtenerHistorial` | `(threadId)` | `listarPorThread` |
 
 ---
 
 ## 4. Controllers
 
-Solo deben recibir/responder HTTP y delegar al service (regla de `03_BACKEND_GUIDELINES.md`).
+Solo HTTP → Service + `{success, data, message}`.
 
-### `auth.controller.js` → `AuthController` (exporta instancia única)
+### `auth.controller.js` (singleton)
 
-| Método | Ruta que lo usa | Qué hace |
+| Método | Ruta | Qué hace |
 |---|---|---|
-| `registrar` | `POST /api/auth/registro` | Llama `authService.registrar(req.body)`, responde `201` con `{ success, message, data: { usuario } }` |
-| `iniciarSesion` | `POST /api/auth/inicio-sesion` | Llama `authService.iniciarSesion(req.body)`, responde `200` con `{ success, message, data: { token, usuario } }` |
+| `registrar` | `POST /api/auth/registro` | `authService.registrar(req.body)` → 201 `{success, message, data:{usuario}}` |
+| `iniciarSesion` | `POST /api/auth/inicio-sesion` | `authService.iniciarSesion(req.body)` → 200 `{success, message, data:{token, usuario}}` |
 
-Ambos usan `try/catch` + `next(error)`.
+### `user.controller.js` (singleton) — **nuevo**
 
-### `course.controller.js` (funciones exportadas individualmente, no una clase)
-
-| Función | Ruta que la usa | Qué hace |
+| Método | Ruta | Qué hace |
 |---|---|---|
-| `crearCurso` | `POST /api/cursos` | `cursoService.crearCurso(req.usuario.id, req.body)` → `201` |
-| `obtenerCurso` | `GET /api/cursos/:id` | `cursoService.obtenerCursoPorId(req.params.id)` → `200` |
-| `listarCursosPublicados` | `GET /api/cursos` | Lee `pagina`/`limite` de `req.query` (default `1`/`12`), delega a `cursoService.listarCursosPublicados` → `200` |
-| `listarMisCursos` | `GET /api/cursos/mis-cursos` | `cursoService.listarCursosDeMentor(req.usuario.id)` → `200` |
-| `actualizarCurso` | `PATCH /api/cursos/:id` | `cursoService.actualizarCurso(req.params.id, req.usuario.id, req.body)` → `200` |
-| `cambiarEstadoCurso` | `PATCH /api/cursos/:id/estado` | `cursoService.cambiarEstado(req.params.id, req.usuario.id, req.body.estado)` → `200` |
-| `eliminarCurso` | `DELETE /api/cursos/:id` | `cursoService.eliminarCurso(req.params.id, req.usuario.id)` → `200` con mensaje de confirmación |
+| `listar` | `GET /api/usuarios` | `user.service.listarUsuarios(req.query)` → 200 `{success, data:{usuarios, total, pagina, limite}}` |
+| `resumen` | `GET /api/usuarios/resumen` | `user.service.resumenRoles()` → 200 `{success, data:{resumen}}` |
+| `crear` | `POST /api/usuarios` | `user.service.crearUsuario(req.body)` → 201 `{success, data:{usuario}}` |
+| `cambiarRol` | `PATCH /api/usuarios/:id/rol` | Valida ObjectId → 400, `user.service.cambiarRol(id, rol, req.usuario.id)` → 200 |
+| `cambiarEstado` | `PATCH /api/usuarios/:id/estado` | Valida ObjectId → 400, `user.service.cambiarEstado(id, activo, req.usuario.id)` → 200 |
 
-Todas usan `try/catch` + `next(error)`.
+Todos `try/catch → next(error)`.
 
-### `document.controller.js` (objeto exportado con métodos)
+### `course.controller.js` (singleton)
 
-| Método | Ruta que lo usa | Qué hace |
+| Función | Ruta | Qué hace |
 |---|---|---|
-| `subirDocumento` | `POST /api/cursos/:cursoId/documentos` | Lee el archivo de `req.file` (multer), llama `documentService.subirDocumento(req.usuario.id, req.params.cursoId, req.file)` → `201` con `{ success, message, data: { documento, vistaPrevia } }` |
-| `listarDocumentos` | `GET /api/cursos/:cursoId/documentos` | `documentService.listarDocumentosDeCurso(req.params.cursoId, req.usuario.id)` → `200` con `{ success, message, data: { documentos } }` |
-| `verChunks` | `GET /api/cursos/:cursoId/documentos/:documentoId/chunks` | `knowledgeChunkRepository.buscarPorDocumento(req.params.documentoId)` (sin capa de service por ahora) → `200` con `{ success, message, data: { total, chunks } }` |
+| `crearCurso` | `POST /api/cursos` | Resuelve `mentorId = req.usuario.id` o `req.body.mentor` si `administrador`, valida mentor rol, `cursoService.crearCurso` → 201 |
+| `obtenerCurso` | `GET /api/cursos/:id` | `obtenerCursoPorId` → 200 |
+| `listarCursosPublicados` | `GET /api/cursos` | `pagina/limite` query → `listarCursosPublicados` →200 |
+| `listarMisCursos` | `GET /api/cursos/mis-cursos` | `listarCursosDeMentor(req.usuario.id)` →200 |
+| `listarTodosAdmin` | `GET /api/cursos/admin/todos` | `listarTodos()` →200 (solo admin) |
+| `actualizarCurso` | `PATCH /api/cursos/:id` | `actualizarCurso(id, req.usuario.id, body, rol)` →200 |
+| `cambiarEstadoCurso` | `PATCH /api/cursos/:id/estado` | `cambiarEstado(id, usuario.id, estado, rol)` →200 |
+| `eliminarCurso` | `DELETE /api/cursos/:id` | `eliminarCurso(id, usuario.id, rol)` →200 |
+| `inscribirCurso` | `POST /api/cursos/:id/inscribir` | Valida ObjectId, lee `Usuario` (nombre/email), `inscribirAprendiz(cursoId, {id,nombre,correo})` →200; ignora directo a `Usuario` (debt: debería pasar por repository) |
+| `cancelarInscripcion` | `DELETE /api/cursos/:id/inscritos/:inscritoId` | `cancelarInscripcion` →200 |
+| `generarEstructura` | `POST /api/cursos/:id/generar-estructura` | `generarEstructuraCurso(id, usuario.id, rol)` →200 |
 
-### `chat.controller.js` → `ChatController` (exporta instancia única)
+### `document.controller.js` (objeto)
 
-| Método | Ruta que lo usa | Qué hace |
+| Método | Ruta | Qué hace |
 |---|---|---|
-| `enviarPregunta` | `POST /api/cursos/:cursoId/chat` | `chatService.enviarPregunta(req.params.cursoId, req.usuario.id, req.body.pregunta, req.body.threadId)` → `200` con `{ success, message, data: { threadId, respuesta, mensajeId, fragmentosUsados } }` |
-| `obtenerHistorial` | `GET /api/cursos/chat/historial/:threadId` | `chatService.obtenerHistorial(req.params.threadId)` → `200` con `{ success, message, data: { mensajes } }` |
+| `subirDocumento` | `POST /api/cursos/:cursoId/documentos` | `req.file` + `documentService.subirDocumento` →201 |
+| `listarDocumentos` | `GET /api/cursos/:cursoId/documentos` | `listarDocumentosDeCurso` →200 |
+| `verChunks` | `GET /api/cursos/:cursoId/documentos/:documentoId/chunks` | `knowledgeChunkRepository.buscarPorDocumento` directo (debt) →200 |
 
-> Nota de formato de respuesta: `course.controller.js` responde con `{ exito, curso }` / `{ exito, cursos }`, mientras `auth.controller.js`, `document.controller.js` y `chat.controller.js` usan `{ success, data, message }`. Ver sección 11.
+### `chat.controller.js` (singleton)
+
+| Método | Ruta | Qué hace |
+|---|---|---|
+| `enviarPregunta` | `POST /api/cursos/:cursoId/chat` | `chatService.enviarPregunta(cursoId, usuario.id, pregunta, threadId)` →200 `{threadId, respuesta, mensajeId, fragmentosUsados}` |
+| `obtenerHistorial` | `GET /api/cursos/chat/historial/:threadId` | `chatService.obtenerHistorial` →200 `{mensajes}` |
 
 ---
 
 ## 5. Middlewares
 
-### `auth.middleware.js` → `verificarToken` (named export)
+### `auth.middleware.js` → `verificarToken`
 
-Lee el header `Authorization`, exige el prefijo `Bearer `. Si falta o el formato es inválido → `AppError(401)`. Si el token no verifica con `jwt.verify` (usando `JWT_SECRET`) → `AppError(403)`. Si es válido, adjunta el payload decodificado (`{ id, rol, email, iat, exp }`) en `req.usuario` y llama `next()`.
+`Authorization: Bearer <token>` requerido → 401 si falta/mal formato, 403 si `jwt.verify` falla, adjunta `req.usuario = {id, rol, email, iat, exp}`.
 
-### `role.middleware.js` → `verificarRol(...rolesPermitidos)` (named export, factory)
+### `role.middleware.js` → `verificarRol(...roles)`
 
-Debe usarse siempre **después** de `verificarToken`. Si `req.usuario.rol` no existe → `AppError(401)`. Si el rol no está en `rolesPermitidos` → `AppError(403)`. Uso: `verificarRol('mentor', 'administrador')`.
+Debe ir después de `verificarToken`. 401 si `req.usuario.rol` falta, 403 si no está en `roles`.
 
-### `validar.middleware.js` → `validar(esquema)` (named export, factory)
+### `validar.middleware.js` → `validar(esquema)`
 
-Corre `esquema.safeParse(req.body)` (esquema Zod). Si falla, junta los mensajes de `resultado.error.issues` (Zod v4; ver sección 10) separados por coma y los envuelve en `AppError(400)`. Si pasa, **reemplaza** `req.body` con `resultado.data` (los datos ya limpios/tipados que devuelve Zod, p. ej. el email ya en minúsculas).
+`esquema.safeParse(req.body)` (Zod v4); si falla junta `error.issues` → 400 `AppError`; si pasa reemplaza `req.body` con `resultado.data` (limpio).
 
-### `error.middleware.js` → `manejarErrores` (named export)
+### `error.middleware.js` → `manejarErrores`
 
-Middleware de 4 argumentos, montado al final de `server.js`. Lee `error.statusCode || 500`. Si `req.log` existe (inyectado por `pino-http`), loguea el error ahí; si no, usa `console.error`. Responde `{ success: false, error: { message } }` — si el status es `500`, oculta el mensaje real y devuelve `"Error interno del servidor"` (para no filtrar detalles internos al cliente).
+4 args, último en `server.js`. `error.statusCode||500`, `req.log` si existe, responde `{success:false, error:{message}}` (oculta mensaje en 500).
 
 ---
 
 ## 6. Validators (Zod)
 
-> El proyecto usa **Zod v4** (`"zod": "^4.4.3"`), no v3. Ver diferencias de API en la sección 10.
+> Zod v4 (`zod@4.4.3`): `error.issues` y `error: () => 'msg'` en enums.
 
 ### `auth.validator.js`
 
 | Esquema | Campos |
 |---|---|
-| `esquemaRegistro` | `nombre` (string, 2–100), `email` (string, email, lowercase, trim), `contraseña` (string, 8–72 — 72 por el límite de bytes de bcrypt), `rol` (enum opcional `aprendiz`\|`mentor`\|`administrador`), `perfilMentor` (objeto opcional `{ bio?, especialidad? }`) |
-| `esquemaInicioSesion` | `email` (string, email, lowercase, trim), `contraseña` (string, mínimo 1 carácter — solo valida que no esté vacía, no repite las reglas de longitud del registro) |
+| `esquemaRegistro` | `nombre` (2–100), `email` (email, lowercase, trim), `contraseña` (8–72), `rol` (enum opcional `aprendiz|mentor|administrador`), `perfilMentor` (`{bio?, especialidad?}` opcional) |
+| `esquemaInicioSesion` | `email` (email, lowercase, trim), `contraseña` (min 1) |
 
 ### `course.validator.js`
 
 | Esquema | Campos |
 |---|---|
-| `esquemaCrearCurso` | `titulo` (string, 3–120), `descripcion` (string, 10–2000), `categoria` (string, 2–60), `precio` (number ≥ 0, opcional), `duracionEstimadaHoras` (number ≥ 0, opcional) |
-| `esquemaActualizarCurso` | `esquemaCrearCurso.partial()` — mismos campos, todos opcionales (para `PATCH`) |
-| `esquemaCambiarEstado` | `estado` (enum `borrador`\|`publicado`\|`archivado`, con mensaje de error custom vía `error`, no `errorMap` — ver sección 10) |
+| `esquemaCrearCurso` | `titulo` (3–120), `descripcion` (10–2000), `categoria` (2–60), `precio` (≥0 opcional), `duracionEstimadaHoras` (≥0 opcional), `mentor` (string opcional para admin) |
+| `esquemaActualizarCurso` | `esquemaCrearCurso.partial()` |
+| `esquemaCambiarEstado` | `estado` (enum `borrador|publicado|archivado`, `error: ()=>'Estado inválido'`) |
 
 ### `chat.validator.js`
 
 | Esquema | Campos |
 |---|---|
-| `esquemaPregunta` | `pregunta` (string, trim, 3–1000 caracteres), `threadId` (string, UUID v4, opcional) |
+| `esquemaPregunta` | `pregunta` (trim, 3–1000), `threadId` (UUID v4 opcional) |
+
+### `user.validator.js` — **nuevo**
+
+| Esquema | Campos |
+|---|---|
+| `esquemaCrearUsuario` | `nombre` (2–100), `email` (email, lowercase, trim), `contraseña` (8–72), `rol` (enum `aprendiz|mentor|administrador`, `error:...`) |
+| `esquemaCambiarRol` | `rol` (enum igual) |
+| `esquemaCambiarEstado` | `activo` (boolean, `error: 'El campo activo debe ser verdadero o falso'`) |
 
 ---
 
 ## 7. Utils
 
-### `AppError.js` → `AppError` (named export, clase)
+### `AppError.js` → `AppError`
 
-Extiende `Error`. Constructor `(message, statusCode = 500)`. Agrega `this.statusCode`, fija `this.name` al nombre de la clase y llama `Error.captureStackTrace`. Es la única forma permitida de lanzar errores desde un service (regla de `03_BACKEND_GUIDELINES.md`).
+Extiende `Error`, `(message, statusCode=500)`, `this.statusCode`, `Error.captureStackTrace`. Única forma de lanzar errores desde services.
 
-### `textChunker.js` → `fragmentarTexto` (named export, función)
+### `textChunker.js` → `fragmentarTexto`
 
-| Firma | Qué hace |
-|---|---|
-| `fragmentarTexto(texto, chunkSize = 1000, overlap = 200)` | Fragmenta un texto largo en chunks para embeddings. 1. Limpia espacios extra y saltos de línea (`\s+` → espacio simple). 2. Itera avanzando `chunkSize - overlap` caracteres en cada paso (esto hace que los chunks se "crucen" — el final de un chunk aparece también al inicio del siguiente, para preservar contexto). 3. Devuelve un array de strings. Si `texto` es vacío/null, devuelve `[]` |
+`fragmentarTexto(texto, chunkSize=1000, overlap=200)` — limpia `\s+`, itera `chunkSize-overlap`, devuelve `string[]` (vacío si `texto` falsy).
 
-### `assistant-provider.interface.js` → `IAssistantProvider` (clase abstracta, named export)
+### `assistant-provider.interface.js` → `IAssistantProvider` (abstracta)
 
-Interfaz del **Strategy Pattern** para proveedores de IA. Cualquier proveedor nuevo (OpenAI, Anthropic, otro modelo open-weight) debe extender esta clase e implementar `generarRespuesta()`. `rag.service.js` solo conoce esta interfaz, nunca el SDK concreto — así se puede cambiar de proveedor sin tocar la lógica de negocio del RAG.
-
-| Método abstracto | Firma | Qué debe hacer la subclase |
-|---|---|---|
-| `generarRespuesta` | `(mensajes, opciones = {})` | Recibe array de mensajes (formato `[{role, content}]`), opciones (modelo, temperatura, maxTokens). Devuelve `Promise<string>` con el texto de la respuesta generada. Lanza error si falla |
-
-**Implementaciones actuales:**
-- ✅ `groq.provider.js` — usa SDK de Groq con modelos open-weight (Llama, Mixtral, etc.)
+Strategy Pattern: `generarRespuesta(mensajes, opciones) => Promise<string>`. Implementaciones: `groq.provider.js` (y futuro OpenAI etc). `rag.service` y `course.service.generarEstructuraCurso` solo conocen esta interfaz.
 
 ---
 
 ## 8. Config
 
-### `database.js` → `conectarBaseDatos` (named export, async)
+### `database.js` → `conectarBaseDatos`
 
-Lee `MONGODB_URI` de `process.env`; si falta, lanza `Error` nativo (no `AppError`, porque corre antes de que exista cualquier request HTTP). Registra listeners de `mongoose.connection` para `connected`/`error`/`disconnected` con `console.log`/`console.error`/`console.warn`. Llama `mongoose.connect(uri)`. Se invoca una sola vez desde `server.js`, antes de `app.listen`, para que ninguna request llegue a un controller antes de tener conexión a la base.
+Lee `MONGODB_URI`, listeners `connected/error/disconnected`, `mongoose.connect(uri)`. Invocada antes de `app.listen` en `server.js`.
 
-### `cloudinary.js` → configuración de Cloudinary (default export)
+### `cloudinary.js` → `cloudinary` (default export)
 
-Configura el SDK de Cloudinary v2 con las credenciales de `.env`:
-- `CLOUDINARY_CLOUD_NAME`
-- `CLOUDINARY_API_KEY`
-- `CLOUDINARY_API_SECRET`
-
-Exporta la instancia configurada (`cloudinary`) para usarla en `document.service.js` (subida de PDFs a la carpeta `mentorsync/documentos` con `resource_type: 'raw'`).
+Configura SDK v2 con `CLOUDINARY_CLOUD_NAME/KEY/SECRET`, exporta instancia para `document.service.js` (`resource_type:'raw'`, carpeta `mentorsync/documentos`).
 
 ---
 
 ## 9. Endpoints montados actualmente
 
-Base URL local: `http://localhost:4000`
+Base URL: `http://localhost:4000`
 
 ### `/api/auth` (público salvo donde se indica)
 
@@ -398,65 +432,82 @@ Base URL local: `http://localhost:4000`
 |---|---|---|---|
 | `POST` | `/api/auth/registro` | `validar(esquemaRegistro)` | `{ nombre, email, contraseña, rol?, perfilMentor? }` |
 | `POST` | `/api/auth/inicio-sesion` | `validar(esquemaInicioSesion)` | `{ email, contraseña }` |
-| `GET` | `/api/auth/perfil-protegido` | `verificarToken` + `verificarRol('aprendiz','mentor','administrador')` | — (ruta de prueba, devuelve el payload del JWT) |
+| `GET` | `/api/auth/perfil-protegido` | `verificarToken` + `verificarRol('aprendiz','mentor','administrador')` | — (prueba JWT) |
+
+### `/api/usuarios` — **módulo admin (solo `administrador`)**
+
+| Método | Ruta | Middleware | Notas |
+|---|---|---|---|
+| `GET` | `/api/usuarios` | `verificarToken` + `verificarRol('administrador')` | Query `rol`, `busqueda`, `pagina`, `limite` (max 200) → `{usuarios, total, pagina, limite}` |
+| `GET` | `/api/usuarios/resumen` | `verificarToken` + `verificarRol('administrador')` | → `{resumen:{administrador, mentor, aprendiz, total}}` |
+| `POST` | `/api/usuarios` | `verificarToken` + `verificarRol('administrador')` + `validar(esquemaCrearUsuario)` | Crea usuario con rol arbitrario (evita duplicado 409) |
+| `PATCH` | `/api/usuarios/:id/rol` | `verificarToken` + `verificarRol('administrador')` + `validar(esquemaCambiarRol)` | No a sí mismo (403), valida ObjectId |
+| `PATCH` | `/api/usuarios/:id/estado` | `verificarToken` + `verificarRol('administrador')` + `validar(esquemaCambiarEstado)` | No desactivarse a sí mismo, valida ObjectId |
 
 ### `/api/cursos`
 
 | Método | Ruta | Middleware | Notas |
 |---|---|---|---|
-| `GET` | `/api/cursos` | — (público) | Query `pagina`, `limite`. Solo `estado: 'publicado'` |
-| `GET` | `/api/cursos/mis-cursos` | `verificarToken` + `verificarRol('mentor')` | Definida antes de `/:id` para que Express no la confunda con un id |
+| `GET` | `/api/cursos` | — (público) | Query `pagina`, `limite`. Solo `estado:'publicado'` |
+| `GET` | `/api/cursos/mis-cursos` | `verificarToken` + `verificarRol('mentor')` | Antes de `/:id` |
+| `GET` | `/api/cursos/admin/todos` | `verificarToken` + `verificarRol('administrador')` | Antes de `/:id`, todos `activo:true` sin filtrar estado |
 | `GET` | `/api/cursos/:id` | — (público) | |
-| `POST` | `/api/cursos` | `verificarToken` + `verificarRol('mentor')` + `validar(esquemaCrearCurso)` | |
-| `PATCH` | `/api/cursos/:id` | `verificarToken` + `verificarRol('mentor')` + `validar(esquemaActualizarCurso)` | El service valida que el curso pertenezca al mentor autenticado |
-| `PATCH` | `/api/cursos/:id/estado` | `verificarToken` + `verificarRol('mentor')` + `validar(esquemaCambiarEstado)` | |
-| `DELETE` | `/api/cursos/:id` | `verificarToken` + `verificarRol('mentor')` | Soft delete (`activo: false`) |
-| `POST` | `/api/cursos/:cursoId/documentos` | `verificarToken` + `verificarRol('mentor')` + `multer.single('archivo')` | Sube un PDF (máx 15 MB), lo procesa (extracción de texto, chunking, embeddings) y lo almacena en Cloudinary. Body es `multipart/form-data` con el campo `archivo` |
-| `GET` | `/api/cursos/:cursoId/documentos` | `verificarToken` + `verificarRol('mentor')` | Lista los documentos de un curso |
-| `GET` | `/api/cursos/:cursoId/documentos/:documentoId/chunks` | `verificarToken` + `verificarRol('mentor')` | Devuelve los chunks (fragmentos + embeddings) generados para un documento específico — útil para debugging del pipeline RAG |
+| `POST` | `/api/cursos` | `verificarToken` + `verificarRol('mentor','administrador')` + `validar(esquemaCrearCurso)` | Si `administrador` y `body.mentor`, asigna a ese mentor (valida rol mentor) |
+| `POST` | `/api/cursos/:id/generar-estructura` | `verificarToken` + `verificarRol('mentor')` | Genera `modulos/lecciones` vía Groq JSON (requiere `contenidoTextoPlano`) |
+| `POST` | `/api/cursos/:id/inscribir` | `verificarToken` | Inscribe aprendiz (`inscritos[]` con `$addToSet`), evita duplicado |
+| `DELETE` | `/api/cursos/:id/inscritos/:inscritoId` | `verificarToken` + `verificarRol('aprendiz')` | `$pull` por `_id` de subdocumento |
+| `PATCH` | `/api/cursos/:id` | `verificarToken` + `verificarRol('mentor','administrador')` + `validar(esquemaActualizarCurso)` | Verifica propiedad (admin bypass) |
+| `PATCH` | `/api/cursos/:id/estado` | `verificarToken` + `verificarRol('mentor','administrador')` + `validar(esquemaCambiarEstado)` | |
+| `DELETE` | `/api/cursos/:id` | `verificarToken` + `verificarRol('mentor','administrador')` | Soft delete `activo:false` |
 
-### `/api/cursos` (continuación)
+### `/api/cursos` — documentos y chat
 
 | Método | Ruta | Middleware | Notas |
 |---|---|---|---|
-| `POST` | `/api/cursos/:cursoId/chat` | `verificarToken` + `verificarRol('aprendiz','mentor','administrador')` + `validar(esquemaPregunta)` | Envía pregunta al bot del curso. Body: `{ pregunta, threadId? }`. Devuelve `{ success, data: { threadId, respuesta, mensajeId, fragmentosUsados } }`. Solo funciona si el curso está publicado (`estado: 'publicado'`) |
-| `GET` | `/api/cursos/chat/historial/:threadId` | `verificarToken` | Obtiene historial completo de un hilo de conversación (todos los mensajes ordenados cronológicamente) |
+| `POST` | `/api/cursos/:cursoId/documentos` | `verificarToken` + `verificarRol('mentor')` + `multer.single('archivo')` | `multipart/form-data` `archivo` (PDF, 15 MB), síncrono → Cloudinary + chunks |
+| `GET` | `/api/cursos/:cursoId/documentos` | `verificarToken` + `verificarRol('mentor')` | Lista documentos de curso |
+| `GET` | `/api/cursos/:cursoId/documentos/:documentoId/chunks` | `verificarToken` + `verificarRol('mentor')` | Chunks de documento |
+| `POST` | `/api/cursos/:cursoId/chat` | `verificarToken` + `validar(esquemaPregunta)` | `{pregunta, threadId?}` → `{threadId, respuesta, mensajeId, fragmentosUsados}` (curso debe estar `publicado`) |
+| `GET` | `/api/cursos/chat/historial/:threadId` | `verificarToken` | Historial de hilo ordenado cronológicamente |
 
-Verificado manualmente el 2026-08-31 (auth y cursos básico). Verificado el 2026-09-01 (documentos y chat con Bruno API). **Estado: ✅ Todos los endpoints principales verificados.**
+Verificados 2026-08-31 (auth/cursos), 2026-09-01 (documentos/chat), 2026-09-22 (usuarios admin + inscribir/estructura) con Bruno.
 
 ---
 
 ## 10. Dependencias clave y versiones
 
-Extraídas de `backend/package.json` (verificar este archivo para la lista completa).
+Extraídas de `backend/package.json`.
 
-| Dependencia | Versión | Qué hace en el proyecto |
+| Dependencia | Versión | Qué hace |
 |---|---|---|
-| `@xenova/transformers` | `^2.17.2` | Genera embeddings localmente (modelo `Xenova/all-MiniLM-L6-v2`, 384 dimensiones). No necesita GPU ni API externa — corre en CPU puro. La primera ejecución descarga el modelo (~30MB) y lo cachea. |
-| `bcryptjs` | `^3.0.3` | Hash de contraseñas con salt de 10 rondas (ver `auth.service.js`) |
-| `cloudinary` | `^2.11.0` | Subida de PDFs a almacenamiento en la nube (carpeta `mentorsync/documentos`). Requiere variables de entorno `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` |
-| `compression` | `^1.8.1` | Compresión gzip de respuestas HTTP |
-| `cors` | `^2.8.6` | Habilita CORS (montado globalmente, acepta cualquier origen por ahora) |
-| `dotenv` | `^16.4.7` | Carga variables de entorno desde `.env` |
-| `express` | `^4.21.2` | Framework web |
-| `express-mongo-sanitize` | `^2.2.0` | Previene NoSQL injection limpiando `req.body`, `req.query` y `req.params` |
-| `express-rate-limit` | `^8.6.2` | Rate limiting global: 300 requests por IP cada 15 minutos (ver `server.js`) |
-| `groq-sdk` | `^0.15.0` | Cliente oficial de Groq para chat completions. **Ahora en uso activo** — implementado en `groq.provider.js` para el chatbot RAG. Requiere `GROQ_API_KEY` y `GROQ_MODEL` (modelo por defecto, ej. `llama-3.3-70b-versatile`) |
-| `helmet` | `^8.3.0` | Headers de seguridad HTTP |
-| `jsonwebtoken` | `^9.0.3` | Generación y verificación de JWT (payload `{id, rol, email}`, expiración configurable vía `JWT_EXPIRES_IN`) |
-| `mongodb` | `^7.6.0` | Driver nativo de MongoDB (Mongoose lo usa internamente) |
-| `mongoose` | `^8.9.5` | ODM para MongoDB |
-| `multer` | `^1.4.5-lts.2` | Middleware para `multipart/form-data` (subida de archivos). Configurado con límite de 15 MB y filtro para solo PDFs en `document.routes.js` |
-| `pdf-parse` | `^1.1.1` | Extracción de texto plano desde buffer de PDF |
-| `pino` + `pino-http` | `^10.3.1` / `^11.0.0` | Logging estructurado JSON (requiere `pino-pretty` en dev para formato legible) |
-| `socket.io` | `^4.8.3` | **Instalado pero aún no usado** — futuro soporte para chat en vivo mentor↔aprendiz |
-| `streamifier` | `^0.1.1` | Convierte buffer de PDF a stream para subirlo a Cloudinary |
-| `swagger-jsdoc` + `swagger-ui-express` | `^6.3.0` / `^5.0.1` | **Instalados pero aún no montados** (ver `// TODO` en `server.js`) |
-| `zod` | `^4.4.3` | Validación de schemas. ⚠️ **Es Zod v4**, no v3 — API cambió (`error.issues` en vez de `error.errors`, opción `error` en vez de `errorMap` para enums). Ver correcciones en la revisión del 2026-08-31 |
+| `@xenova/transformers` | `^2.17.2` | Embeddings local `all-MiniLM-L6-v2`, 384D, CPU, cache ~30MB |
+| `bcryptjs` | `^3.0.3` | Hash contraseñas (salt 10) |
+| `cloudinary` | `^2.11.0` | PDFs `raw`, carpeta `mentorsync/documentos` |
+| `compression` | `^1.8.1` | gzip |
+| `cors` | `^2.8.6` | CORS global |
+| `dotenv` | `^16.4.7` | `.env` |
+| `express` | `^4.21.2` | Framework |
+| `express-mongo-sanitize` | `^2.2.0` | Limpia `body/query/params` |
+| `express-rate-limit` | `^8.6.2` | 300/15min |
+| `groq-sdk` | `^0.15.0` | Groq `chat.completions.create` (RAG + estructura) |
+| `helmet` | `^8.3.0` | Headers |
+| `jsonwebtoken` | `^9.0.3` | JWT `{id,rol,email}` |
+| `mongodb` | `^7.6.0` | Driver nativo (via Mongoose) |
+| `mongoose` | `^8.9.5` | ODM |
+| `multer` | `^1.4.5-lts.2` | `multipart/form-data` 15 MB |
+| `pdf-parse` | `^1.1.1` | Extracción texto PDF |
+| `pino` + `pino-http` | `^10.3.1` / `^11.0.0` | Logging JSON (`pino-pretty` en dev) |
+| `sharp` | `^0.35.4` | Procesado imágenes (nuevo) |
+| `socket.io` | `^4.8.3` | Instalado, no usado (futuro vivo) |
+| `streamifier` | `^0.1.1` | Buffer→stream para Cloudinary |
+| `swagger-jsdoc` + `swagger-ui-express` | `^6.3.0` / `^5.0.1` | Instalados, no montados |
+| `validator` | `^13.15.35` | Validaciones extra (nuevo) |
+| `zod` | `^4.4.3` | Validación (v4: `error.issues`, `error:`) |
 
-### Variables de entorno esperadas (`.env`)
+Engines: `node >=24.20.0`.
 
-Definidas en `.env.example`:
+### Variables de entorno (`.env`)
+
 ```
 PORT=
 MONGODB_URI=
@@ -469,46 +520,34 @@ GROQ_API_KEY=
 GROQ_MODEL=
 ```
 
-**Actualización 2026-09-01:** `GROQ_API_KEY` y `GROQ_MODEL` ahora sí son necesarias para que el chatbot funcione. El servidor puede arrancar sin ellas (inicialización perezosa en `groq.provider.js`), pero cualquier llamada al bot lanzará `AppError(503, 'GROQ_NOT_CONFIGURED')` si falta `GROQ_API_KEY`.
-
-Antes de levantar el servidor, correr `npm run check-setup` (`scripts/check-setup.js`) para validar que todas las variables críticas estén presentes. **El script actual solo valida `PORT`, `MONGODB_URI`, `JWT_SECRET` y `GROQ_API_KEY`** — falta agregar las de Cloudinary y `GROQ_MODEL`.
+`GROQ_API_KEY`/`GROQ_MODEL` necesarias para chat y `generar-estructura`. Servidor arranca sin ellas (lazy init), pero esas rutas lanzan 503 si faltan. `check-setup.js` valida `PORT`, `MONGODB_URI`, `JWT_SECRET`, `GROQ_API_KEY`, `GROQ_MODEL`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (8 vars).
 
 ---
 
 ## 11. Deuda técnica / inconsistencias detectadas
 
-Encontradas en la revisión de código del 2026-08-31. Las marcadas ✅ ya se corrigieron; el resto sigue pendiente.
+**Corregidos:**
+- ✅ `course.service` / `course.routes` imports default → named exports.
+- ✅ Modelos ESM (`require` → `import`) y refs `User/Course` → `Usuario/Curso`.
+- ✅ `validar.middleware` `error.errors` → `error.issues` (Zod v4).
+- ✅ `course.validator` `errorMap` → `error`.
+- ✅ `auth.repository` creado y `auth.service` lo usa.
+- ✅ `verificarPropiedad` ahora `verificarPropiedad(curso, mentorId, rol)` con bypass `administrador`.
+- ✅ Formato respuesta `course.controller` unificado a `{success, data, message}` (antes `{exito, curso}`).
+- ✅ Módulo `user` (repository/service/controller/validator/routes) implementado.
+- ✅ `course.model` `inscritos` + `modulos/lecciones` + `contenidoTextoPlano` + `estado` default `publicado` implementados.
+- ✅ `course.repository` `listarTodos`/`inscribirAprendiz`/`cancelarInscripcion` y `course.service` `generarEstructuraCurso` implementados.
 
-- ✅ **Corregido** — `course.service.js` importaba `AppError` como default export (`import AppError from '../utils/AppError.js'`), pero `AppError.js` solo tiene named export. Esto rompía la carga de todo el módulo (y por lo tanto de `server.js` completo, porque `server.js` importa `course.routes.js` → `course.controller.js` → `course.service.js`).
-- ✅ **Corregido** — `course.routes.js` importaba `verificarToken`, `verificarRol` y `validar` como default exports; los tres middlewares solo tienen named export. Mismo efecto: rompía el arranque del servidor.
-- ✅ **Corregido** — `enrollment.model.js`, `liveSession.model.js`, `chatMessage.model.js`, `document.model.js` y `knowledgeChunk.model.js` usaban sintaxis CommonJS (`require`/`module.exports`) en un proyecto `"type": "module"`. Convertidos a `import`/`export default`.
-- ✅ **Corregido** — esos mismos modelos referenciaban `ref: 'User'` / `ref: 'Course'`, pero los modelos reales están registrados como `'Usuario'` y `'Curso'` (ver `user.model.js`/`course.model.js`). Cualquier `.populate()` sobre esos campos fallaría en silencio (Mongoose no lanza error si el modelo referenciado no existe, simplemente no puede resolver la referencia). Ajustados a `'Usuario'`/`'Curso'`.
-- ✅ **Corregido** — `validar.middleware.js` usaba `resultado.error.errors` (API de Zod v3). El proyecto tiene instalado **Zod v4**, donde la propiedad se renombró a `resultado.error.issues`. Con `errors` undefined, cualquier validación fallida producía un `500` (`TypeError: Cannot read properties of undefined (reading 'map')`) en lugar de un `400` con el mensaje real. Esto se reprodujo en pruebas manuales antes de corregirlo.
-- ✅ **Corregido** — `course.validator.js` usaba la opción `errorMap` de `z.enum(...)` (API de Zod v3). En Zod v4 la opción correcta es `error`; con `errorMap` no se lanza excepción, pero el mensaje custom se ignora silenciosamente y Zod devuelve su mensaje default. Cambiado a `error: () => 'Estado inválido'`.
-
-**Pendiente (no bloquea funcionalidad actual, pero está fuera de convención o incompleto):**
-
-- ✅ **Corregido** — `auth.repository.js` ahora existe y `auth.service.js` lo usa correctamente. Ya no consulta el modelo `Usuario` directamente.
-- [ ] Inconsistencia de formato de respuesta entre módulos: `auth.controller.js` y `document.controller.js` responden `{ success, message, data }` (formato documentado en `03_BACKEND_GUIDELINES.md`), pero `course.controller.js` responde `{ exito, curso }` / `{ exito, cursos }` — dos convenciones distintas (español/inglés, y sin envolver en `data`). Conviene unificar antes de que el frontend empiece a consumir ambos endpoints.
-- [ ] `04_DATABASE_SCHEMA.md` describe el diseño de colecciones con nombres de campo en inglés (`passwordHash`, `mentorId`, `estado: "activo"|"borrador"`) que ya no coinciden con la implementación real en español (`contraseñaHash`, `mentor`, `estado: "borrador"|"publicado"|"archivado"`, más `precio`, `duracionEstimadaHoras`, `bot.*`, `activo`). Ver la actualización aplicada a ese documento.
-- [ ] Ningún endpoint tiene todavía su bloque `@openapi` para swagger-jsdoc, pese a que la regla en `03_BACKEND_GUIDELINES.md` dice "no dejar endpoints nuevos sin su bloque `@openapi`". `swagger-ui-express` tampoco está montado en `server.js` (hay un `// TODO` explícito).
-- [ ] `enrollment.model.js`, `liveSession.model.js`, `chatMessage.model.js`, `document.model.js` y `knowledgeChunk.model.js` no tienen todavía repository/service/controller/routes — solo el modelo Mongoose existe.
-- [ ] `verificarPropiedad` en `course.service.js` no contempla el rol `administrador` como bypass (un admin no podría editar/eliminar el curso de un mentor aunque el middleware de rol lo dejara pasar a la ruta, porque hoy esas rutas solo aceptan `verificarRol('mentor')`).
-- [ ] `esquemaInicioSesion.contraseña` solo exige `min(1)` — no repite el rango 8–72 de `esquemaRegistro`. Es intencional (no se debe validar la política de contraseña en el login, solo que no venga vacía), pero vale dejarlo explícito para que no se lea como un descuido.
-- [ ] `enrollment.model.js` no valida rango (`min`/`max`) en `progreso`, a diferencia de otros campos numéricos del proyecto que sí usan `min: 0`.
-
----
-
-*Última revisión de código: 2026-08-31. Actualizar este documento cada vez que se agregue un método, modelo, middleware o validator nuevo.*
-
-
-**Pendiente — agregadas tras implementar módulo de documentos (2026-09-01):**
-
-- [ ] `README.md` menciona "Google Gemini API" en el stack cuando en realidad el proyecto usa Groq (SDK instalado, pendiente de implementar el chatbot). También dice que el RAG está en desarrollo, pero el chunking+embeddings ya funciona completamente — solo falta la búsqueda vectorial con `$vectorSearch` + generación de respuestas con LLM.
-- [ ] `scripts/check-setup.js` valida `GROQ_API_KEY` pero esa variable ya no aparece en `.env.example`. Además, no valida las 3 variables de Cloudinary (`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`), que sí son obligatorias ahora que el módulo de documentos está activo.
-- [ ] `document.controller.verChunks` llama directamente a `knowledgeChunkRepository` sin pasar por un service — rompe la convención de `03_BACKEND_GUIDELINES.md` ("El Controller nunca debe importar un repository directamente"). Probablemente convenga mover esa query a `document.service.js`.
-- [ ] Los endpoints de documentos (`POST /api/cursos/:cursoId/documentos`, `GET /api/cursos/:cursoId/documentos`, `GET /api/cursos/:cursoId/documentos/:documentoId/chunks`) no tienen validación manual end-to-end documentada (los otros endpoints se verificaron el 2026-08-31 con curl/PowerShell).
+**Pendiente (no bloquea MVP, pero fuera de convención):**
+- [ ] Sin bloques `@openapi` ni `swagger-ui-express` montado (`// TODO` en `server.js`).
+- [ ] `enrollment`/`liveSession` solo modelo, sin repository/service.
+- [ ] `course.controller.inscribirCurso` importa `Usuario` directo (debería usar `authRepository`/`userRepository`).
+- [ ] `document.controller.verChunks` llama `knowledgeChunkRepository` directo sin pasar por service.
+- [ ] `esquemaInicioSesion.contraseña` con `min(1)` es intencional (no valida política en login), pero debería comentarse.
+- [ ] `enrollment.model.progreso` sin `min/max`.
+- [ ] `check-setup.js` no valida Cloudinary ni `GROQ_MODEL`; `course.repository.listarPublicados` aún loguea con `console.log`.
+- [ ] Frontend `roleGuard` usa roles capitalizados (`Aprendiz|Mentor|Administrador`) mientras backend usa minúsculas — funciona vía `authService.rolCoincide` (case-sensitive mapeado), pero conviene unificar.
 
 ---
 
-*Última revisión de código: 2026-09-01 (actualización tras implementación del módulo de documentos + pipeline completo de chunking y embeddings). Actualizar este documento cada vez que se agregue un método, modelo, middleware o validator nuevo.*
+*Última revisión: 2026-09-22. Actualizar este documento cada vez que se agregue un método, modelo, middleware o validator nuevo.*

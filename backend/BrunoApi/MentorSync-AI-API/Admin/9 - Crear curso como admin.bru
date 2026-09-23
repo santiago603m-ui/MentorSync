@@ -1,0 +1,33 @@
+meta {
+  name: 9 - Crear curso como admin
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/cursos
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "titulo": "Curso de prueba admin",
+    "descripcion": "Curso creado desde el panel de administración.",
+    "categoria": "Programación",
+    "precio": 0,
+    "mentor": "PEGAR_AQUI_EL_ID_DE_UN_MENTOR"
+  }
+}
+
+docs {
+  Crea un curso asignado a un mentor.
+  Reemplaza PEGAR_AQUI_EL_ID_DE_UN_MENTOR con el _id de un usuario rol
+  mentor (tómalo del request 2). Sin el campo mentor, el curso queda
+  asignado al propio administrador.
+}

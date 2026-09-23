@@ -1,0 +1,25 @@
+meta {
+  name: 2 - Listar usuarios
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/usuarios?limite=100
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+vars:post-response {
+  userId: res.body.data.usuarios[0]._id
+}
+
+docs {
+  Lista usuarios (filtros opcionales: ?rol=mentor&busqueda=texto&pagina=1&limite=20).
+  Guarda el _id del primer usuario en la variable userId para los requests 4 y 5.
+  Requiere el token de administrador del request 1.
+}

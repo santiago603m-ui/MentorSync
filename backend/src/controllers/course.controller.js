@@ -1,11 +1,25 @@
 import mongoose from 'mongoose';
 import cursoService from '../services/course.service.js';
+import usuarioService from '../services/user.service.js';
+import { AppError } from '../utils/AppError.js';
 import Usuario from '../models/user.model.js'; // 👈 importa tu modelo de usuario
 
 class CourseController {
   async crearCurso(req, res, next) {
     try {
-      const curso = await cursoService.crearCurso(req.usuario.id, req.body);
+      // El mentor siempre es dueño de sus cursos; el administrador
+      // puede asignar el curso a un mentor existente vía body.mentor
+      let mentorId = req.usuario.id;
+      if (req.usuario.rol === 'administrador' && req.body.mentor) {
+        const mentor = await usuarioService.obtenerPorId(req.body.mentor);
+        if (mentor.rol !== 'mentor') {
+          throw new AppError('El usuario asignado debe tener rol mentor', 400);
+        }
+        mentorId = mentor._id;
+      }
+
+      const { mentor, ...datosCurso } = req.body;
+      const curso = await cursoService.crearCurso(mentorId, datosCurso);
       return res.status(201).json({
         success: true,
         message: 'Curso creado correctamente',
@@ -141,9 +155,22 @@ class CourseController {
     }
   }
 
+  async listarTodosAdmin(req, res, next) {
+    try {
+      const cursos = await cursoService.listarTodos();
+      return res.status(200).json({
+        success: true,
+        message: 'Cursos obtenidos correctamente',
+        data: { cursos },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async actualizarCurso(req, res, next) {
     try {
-      const curso = await cursoService.actualizarCurso(req.params.id, req.usuario.id, req.body);
+      const curso = await cursoService.actualizarCurso(req.params.id, req.usuario.id, req.body, req.usuario.rol);
       return res.status(200).json({
         success: true,
         message: 'Curso actualizado correctamente',
@@ -156,7 +183,7 @@ class CourseController {
 
   async cambiarEstadoCurso(req, res, next) {
     try {
-      const curso = await cursoService.cambiarEstado(req.params.id, req.usuario.id, req.body.estado);
+      const curso = await cursoService.cambiarEstado(req.params.id, req.usuario.id, req.body.estado, req.usuario.rol);
       return res.status(200).json({
         success: true,
         message: 'Estado del curso actualizado correctamente',
@@ -169,7 +196,7 @@ class CourseController {
 
   async eliminarCurso(req, res, next) {
     try {
-      await cursoService.eliminarCurso(req.params.id, req.usuario.id);
+      await cursoService.eliminarCurso(req.params.id, req.usuario.id, req.usuario.rol);
       return res.status(200).json({
         success: true,
         message: 'Curso eliminado correctamente',
@@ -182,7 +209,7 @@ class CourseController {
 
   async generarEstructura(req, res, next) {
     try {
-      const curso = await cursoService.generarEstructuraCurso(req.params.id, req.usuario.id);
+      const curso = await cursoService.generarEstructuraCurso(req.params.id, req.usuario.id, req.usuario.rol);
       return res.status(200).json({
         success: true,
         message: 'Estructura del curso generada con éxito',

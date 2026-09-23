@@ -1,5 +1,16 @@
 <div class="workspace-container">
   <main class="content-viewport">
+    <!-- Unirse a sesión en vivo por código/link -->
+    <div class="card cosmic-card" style="margin-bottom:1rem">
+      <div class="card-header">
+        <h2><i class="fa-solid fa-video"></i> Unirse a sesión en vivo</h2>
+      </div>
+      <div class="card-body" style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center">
+        <input type="text" placeholder="Pega código o link (ej. 68f... o https://.../sesion/68f...)" [(ngModel)]="codigoSesion" class="search-input" style="flex:1;min-width:260px" />
+        <button class="btn-action" (click)="unirseSesionVivo()"><i class="fa-solid fa-door-open"></i> Unirse</button>
+      </div>
+    </div>
+
     <!-- Módulo Cursos -->
     <div *ngIf="activeModule === 'cursos'" class="module-section animate-fade">
       <div class="card cosmic-card">

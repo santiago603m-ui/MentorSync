@@ -11,25 +11,19 @@ post {
 }
 
 headers {
-  Content-Type: application/json
+  Content-Type0: application/json
 }
 
 body:json {
   {
-  "email": "santiago@gmail.com",
-  "contraseña": "clave12345"
+  
+    "email": "admin@admin.com",
+    "contraseña": "admin123"
   }
 }
 
 vars:post-response {
   token: res.body.data.token
-}
-
-script:post-response {
-  {
-    "email": "mentor.prueba@test.com",
-    "contraseña": "12345678"
-  }
 }
 
 docs {

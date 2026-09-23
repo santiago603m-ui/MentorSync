@@ -1,6 +1,9 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { LiveSessionService, LiveSession } from '../../core/services/live-session.service';
+import { CursoService } from '../../core/services/curso.service';
 
 // ==========================================
 // INTERFACES
@@ -471,6 +474,54 @@ export class MentorDashboardQuickComponent {
               </section>
             }
 
+            <!-- VISTA 5: SESIONES EN VIVO -->
+            @if (tabActual === 'sesiones') {
+              <section class="card-section">
+                <div class="section-header">
+                  <h3><i class="fas fa-video"></i> Sesiones en vivo</h3>
+                </div>
+                <div class="form-group">
+                  <label>Curso (real)</label>
+                  <select class="form-input" [(ngModel)]="nuevaSesion.courseId" (change)="cargarSesionesVivo()">
+                    <option value="">-- Selecciona un curso --</option>
+                    @for (c of cursosReales; track c._id) {
+                      <option [value]="c._id">{{ c.titulo }} — {{ c.categoria }}</option>
+                    }
+                  </select>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;">
+                  <div class="form-group"><label>Título de la sesión</label><input class="form-input" [(ngModel)]="nuevaSesion.titulo" placeholder="Ej. Clase en vivo #1" /></div>
+                  <div class="form-group"><label>Fecha/hora</label><input type="datetime-local" class="form-input" [(ngModel)]="nuevaSesion.fechaInicioProgramada" /></div>
+                </div>
+                <div class="form-group"><label>URL reunión (opcional, Jitsi/Meet)</label><input class="form-input" [(ngModel)]="nuevaSesion.urlReunion" placeholder="https://meet.jit.si/..." /></div>
+                <button class="btn-cyan-glow" (click)="crearSesionVivo()"><i class="fas fa-plus"></i> Crear sesión</button>
+                @if (linkGenerado) {
+                  <div style="margin-top:0.8rem;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.25);border-radius:8px;padding:0.6rem 0.8rem;display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+                    <i class="fas fa-link" style="color:#06b6d4"></i>
+                    <code style="font-size:0.75rem;word-break:break-all;flex:1">{{ linkGenerado }}</code>
+                    <button class="btn-cancel" (click)="copiarLinkVivo(linkGenerado.split('/').pop()!)">Copiar</button>
+                    <button class="btn-cyan-glow btn-sm" (click)="irASesionVivo(linkGenerado.split('/').pop()!)">Entrar</button>
+                  </div>
+                }
+                <hr style="margin:1.2rem 0;border:none;border-top:1px solid rgba(255,255,255,0.06)" />
+                <h4 style="font-size:0.9rem;margin:0 0 0.6rem"><i class="fas fa-list"></i> Sesiones del curso seleccionado</h4>
+                @if (cargandoSesiones) { <p class="text-muted" style="font-size:0.8rem">Cargando…</p> }
+                @if (sesionesVivo.length === 0 && !cargandoSesiones) { <p class="text-muted" style="font-size:0.8rem">Sin sesiones — crea la primera arriba.</p> }
+                @for (s of sesionesVivo; track s._id) {
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem 0.8rem;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.5rem">
+                    <div>
+                      <strong style="font-size:0.85rem">{{ s.titulo }}</strong> <span class="badge" [ngClass]="{'badge-warning': s.estado==='programada','badge-success': s.estado==='en_curso','badge-danger': s.estado==='finalizada'}">{{ s.estado }}</span>
+                      <br><small class="text-muted">{{ s.fechaInicioProgramada | date:'short' }} — {{ s._id }}</small>
+                    </div>
+                    <div style="display:flex;gap:0.4rem">
+                      <button class="btn-cancel" (click)="copiarLinkVivo(s._id)" title="Copiar link"><i class="fas fa-link"></i></button>
+                      <button class="btn-cyan-glow btn-sm" (click)="irASesionVivo(s._id)">Entrar</button>
+                    </div>
+                  </div>
+                }
+              </section>
+            }
+
           </div>
         </main>
 
@@ -496,6 +547,11 @@ export class MentorDashboardQuickComponent {
             [class.active]="tabActual === 'entregas'" 
             (click)="tabActual = 'entregas'">
             <i class="fas fa-tasks"></i> Revisiones
+          </button>
+          <button 
+            [class.active]="tabActual === 'sesiones'" 
+            (click)="tabActual = 'sesiones'">
+            <i class="fas fa-video"></i> Sesiones en vivo
           </button>
         </aside>
 
@@ -1029,12 +1085,43 @@ export class MentorDashboardQuickComponent {
       from { opacity: 0; transform: scale(0.96); }
       to { opacity: 1; transform: scale(1); }
     }
+
+    @media (max-width: 900px) {
+      .panel-body { flex-direction: column; gap: 1rem; padding: 1rem 1rem 6rem 1rem; }
+      .main-content { padding-right: 0; }
+      .side-navbar { width: 100%; height: auto; flex-direction: row; flex-wrap: wrap; gap: 0.5rem; padding: 0.8rem; border-radius: 12px; justify-content: flex-start; overflow-x: auto; }
+      .side-navbar .nav-title { display: none; }
+      .side-navbar button { flex: 0 0 auto; padding: 0.6rem 0.9rem; font-size: 0.82rem; }
+      .courses-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.9rem; }
+      .card-section { padding: 1.1rem; }
+      .data-table { min-width: 520px; }
+    }
+
+    @media (max-width: 480px) {
+      .panel-body { padding: 0.75rem 0.75rem 6rem 0.75rem; }
+      .section-header { flex-direction: column; align-items: stretch; }
+      .search-input { width: 100%; min-width: 0; }
+      .courses-grid { grid-template-columns: 1fr; }
+      .side-navbar { gap: 0.4rem; padding: 0.6rem; }
+      .side-navbar button { flex: 1 1 auto; justify-content: center; padding: 0.55rem 0.7rem; font-size: 0.78rem; }
+      .table-wrapper { margin: 0 -0.3rem; border-radius: 8px; }
+      .btn-cyan-glow, .btn-cancel { width: 100%; justify-content: center; }
+      .modal-card { margin: 1rem; padding: 1.4rem; }
+      .form-input { font-size: 16px; }
+    }
   `]
 })
-export class MentorPageComponent {
-  tabActual: 'dashboard' | 'aprendices' | 'cursos' | 'entregas' = 'dashboard';
+export class MentorPageComponent implements OnInit {
+  tabActual: 'dashboard' | 'aprendices' | 'cursos' | 'entregas' | 'sesiones' = 'dashboard';
   filtroAprendiz: string = '';
   mostrarModalCurso: boolean = false;
+
+  // --- Sesiones en vivo ---
+  sesionesVivo: LiveSession[] = [];
+  cursosReales: import('../../models/curso.model').Curso[] = [];
+  nuevaSesion = { courseId: '', titulo: '', fechaInicioProgramada: '', urlReunion: '' };
+  linkGenerado: string | null = null;
+  cargandoSesiones = false;
 
   nuevoCurso: Partial<Curso> = { nombre: '', categoria: '' };
 
@@ -1120,5 +1207,49 @@ export class MentorPageComponent {
         entrega.estado = 'Calificado';
       }
     }
+  }
+
+  // --- Sesiones en vivo (backend real) ---
+  constructor(private liveSessionService: LiveSessionService, private cursoServiceReal: CursoService, private router: Router) {}
+
+  ngOnInit(): void {
+    this.cursoServiceReal.obtenerCursos().subscribe({
+      next: (cursos) => (this.cursosReales = cursos),
+      error: () => {},
+    });
+  }
+
+  crearSesionVivo(): void {
+    if (!this.nuevaSesion.courseId || !this.nuevaSesion.titulo || !this.nuevaSesion.fechaInicioProgramada) {
+      alert('Completa curso, título y fecha');
+      return;
+    }
+    this.liveSessionService.crear(this.nuevaSesion).subscribe({
+      next: (s) => {
+        this.linkGenerado = this.liveSessionService.generarLink(s._id);
+        this.sesionesVivo.unshift(s);
+        alert('Sesión creada. Link: ' + this.linkGenerado);
+      },
+      error: (err) => alert(err.error?.error?.message || 'No se pudo crear la sesión'),
+    });
+  }
+
+  copiarLinkVivo(id: string): void {
+    const link = this.liveSessionService.generarLink(id);
+    navigator.clipboard.writeText(link);
+    this.linkGenerado = link;
+  }
+
+  irASesionVivo(id: string): void {
+    this.router.navigate(['/sesion', id]);
+  }
+
+  cargarSesionesVivo(): void {
+    if (!this.nuevaSesion.courseId) return;
+    this.cargandoSesiones = true;
+    this.liveSessionService.listarPorCurso(this.nuevaSesion.courseId).subscribe({
+      next: (sesiones) => { this.sesionesVivo = sesiones; this.cargandoSesiones = false; },
+      error: () => { this.cargandoSesiones = false; },
+    });
   }
 }

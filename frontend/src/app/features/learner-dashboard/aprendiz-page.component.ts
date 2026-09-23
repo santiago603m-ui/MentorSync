@@ -6,6 +6,7 @@ import { FilterPipe } from '../../shared/pipes/filter.pipe';
 import { CursoService } from '../../core/services/curso.service';
 import { Curso } from '../../models/curso.model';
 import { AuthService } from '../../core/services/auth.service';
+import { LiveSessionService } from '../../core/services/live-session.service';
 
 @Component({
   selector: 'app-aprendiz-page',
@@ -18,11 +19,13 @@ export class AprendizPageComponent implements OnInit {
   activeModule: 'dashboard' | 'cursos' = 'dashboard'; // 👈 solo dashboard y cursos
   searchCurso = '';
   cursos: Curso[] = [];
+  codigoSesion = '';
 
   constructor(
     private cursoService: CursoService,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private liveSessionService: LiveSessionService
   ) { }
 
   ngOnInit() {
@@ -75,6 +78,15 @@ export class AprendizPageComponent implements OnInit {
   }
 
 
+
+  unirseSesionVivo(): void {
+    const id = this.liveSessionService.extraerId(this.codigoSesion);
+    if (!id) {
+      alert('Código o link inválido. Pega el ID de 24 caracteres o el link completo.');
+      return;
+    }
+    this.router.navigate(['/sesion', id]);
+  }
 
   // 👇 Función correcta para trackBy
   trackById(index: number, curso: Curso): string {

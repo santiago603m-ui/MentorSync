@@ -5,40 +5,49 @@
 
 ## Principios del estilo glassmorphism
 
-- Fondos semitransparentes con **blur** (`backdrop-filter`)
-- Bordes finos y sutiles con opacidad baja
-- Sombras suaves, difusas
-- Fondo general con gradientes o formas de color detrás de las tarjetas de vidrio (el blur necesita algo de color detrás para verse bien)
-- Jerarquía visual por transparencia, no solo por color sólido
+- Fondos semitransparentes con **blur** (`backdrop-filter: blur(18px)`)
+- Bordes finos con opacidad baja + sombras difusas
+- Fondo con gradiente/vanta detrás de las tarjetas (el blur necesita color detrás)
+- Jerarquía por transparencia, no solo por color sólido
+- Tema dual `dark` (default) / `light` + acento opcional `cyberpunk` (violeta→cian → fucsia→turquesa)
 
-## Variables CSS base (`styles/_glass-tokens.scss`)
+## Variables CSS reales (`src/styles.css`)
 
-```scss
+```css
 :root {
-  /* Superficies de vidrio */
-  --glass-bg: rgba(255, 255, 255, 0.08);
-  --glass-bg-strong: rgba(255, 255, 255, 0.14);
-  --glass-border: rgba(255, 255, 255, 0.18);
-  --glass-blur: blur(16px);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-
-  /* Radios */
-  --radius-sm: 8px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
-
-  /* Color de marca (ajustar según identidad final) */
-  --accent-primary: #7C5CFF;
-  --accent-secondary: #22D3EE;
-
-  /* Fondo base (gradiente detrás de las tarjetas de vidrio) */
+  color-scheme: dark;
+  --glass-bg: rgba(255, 255, 255, 0.07);
+  --glass-bg-strong: rgba(255, 255, 255, 0.13);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-blur: blur(18px);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  --glass-input: rgba(5, 5, 14, 0.55);
   --bg-gradient: radial-gradient(circle at top left, #1B1035, #0B0715 70%);
+  /* + tokens base: --bg-base, --surface-*, --border-*, --text-*, --accent-violet/cyan, --radius-*, --shadow-* */
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --glass-bg: rgba(255, 255, 255, 0.62);
+  --glass-bg-strong: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(15, 23, 42, 0.12);
+  --glass-shadow: 0 8px 32px rgba(15, 23, 42, 0.12);
+  --glass-input: rgba(255, 255, 255, 0.75);
+  --bg-gradient: radial-gradient(circle at top left, #DCE7F7, #EDF1F7 70%);
+  /* + overrides --bg-base, --surface-*, --border-*, --text-* */
+}
+body.theme-cyberpunk {
+  --accent-violet: #FF2AFB; --accent-cyan: #00FFF7;
+  --bg-base: #05010D; /* + surfaces/borders/text/shadows neón */
 }
 ```
 
-## Componente base `.glass-card`
+Controladas por `ThemeService` (`shared/services/theme.service.ts`): signals `mode: 'dark'|'light'` (persistido `mentorsync-mode`, aplicado `document.documentElement.dataset.theme`) y `isCyberpunk` (persistido `mentorsync-theme`, clase `theme-cyberpunk` en `<body>`). Default `dark`.
 
-```scss
+Tokens legacy en `src/styles/_glass-tokens.scss` y `src/styles/styles.scss` (Tailwind) coexisten pero la verdad vigente es `src/styles.css`.
+
+## Componente base `.glass-card` / `.glass-panel`
+
+```css
 .glass-card {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
@@ -51,34 +60,32 @@
 
 ## Reglas de uso
 
-1. Toda tarjeta, modal o panel flotante hereda de `.glass-card` (o de un componente Angular `<glass-card>` reutilizable en `shared/components/`).
-2. El fondo de la app (`--bg-gradient`) siempre debe tener suficiente variación de color/luz para que el blur se note — nunca poner una tarjeta de vidrio sobre un fondo plano de un solo color.
-3. Texto sobre vidrio: usar blanco/gris claro con buen contraste (revisar accesibilidad — el blur reduce legibilidad si el contraste es bajo).
-4. Estados interactivos (hover, focus) suben ligeramente la opacidad (`--glass-bg-strong`) en vez de cambiar el color base.
-5. El chat en vivo y el widget del bot de IA usan la misma variable `--glass-bg`, diferenciados solo por un acento de color (`--accent-primary` para mentor humano, `--accent-secondary` para el bot) para que el aprendiz distinga visualmente con quién está hablando.
+1. Toda tarjeta/modal/panel hereda de `.glass-card`/`.glass-panel` o de `<app-glass-card>` (`shared/components/glass-card`).
+2. El fondo de la app siempre debe tener variación (Vanta `vanta-background` + `--bg-gradient`) para que el blur se note.
+3. Texto sobre vidrio: blanco/gris claro con contraste accesible.
+4. Hover/focus sube opacidad a `--glass-bg-strong`, no cambia color base.
+5. Chat: misma `--glass-bg` con acento `--accent-violet` (humano) vs `--accent-cyan` (bot) para distinguir.
+6. No agregar librerías de UI nuevas sin actualizar `00_PROJECT_CONTEXT.md`. Fuente tipográfica: `Space Grotesk` (display) + `Inter` (body) vía Google Fonts. Iconos: Font Awesome 6.5.2 CDN (ver `index.html`).
 
-## Componentes compartidos previstos (`shared/components/`)
+## Componentes compartidos reales (`shared/components/`)
 
-- `glass-card`
-- `glass-button`
-- `glass-navbar`
-- `glass-modal`
-- `role-badge` (visual distinto por rol: aprendiz / mentor / administrador)
-- `chat-bubble` (variante humano / variante bot)
+- `sidebar` — Atlas-style: rail 56px fijo + explorer 280px auto-hide hover (total 336px), glassmorphism, `SidebarItem {key,label,icon}`, `title` input
+- `vanta-background` — fondo global `three`+`vanta` (púrpura low-poly)
+- `splash-screen`, `logo`, `glass-card`, `button`, `input`
+- `pipes/filter.pipe.ts`, `services/theme.service.ts`, `directives/` (reservado)
+
+## Home hero (actual)
+
+`home-page` usa `gsap`+`animejs` para SVG draw-line loop, spotlight que sigue cursor, tilt 3D, typer rotativo (`programación|Angular|Python|BD|IA`), marquee infinito, stats counters con `IntersectionObserver`, timeline con `timeline-fill` atado al scroll, bento con spotlight y tilt, CTA con borde cónico animado.
 
 ## ⚠️ Regla obligatoria: renderizado de respuestas del bot
-
-Las respuestas del bot pueden venir en markdown (listas, negritas, bloques de código). El flujo correcto es:
 
 ```ts
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-
-// 1. Parsear markdown → HTML
 const html = marked.parse(respuestaDelBot);
-
-// 2. SIEMPRE sanitizar antes de insertar en el DOM
 const htmlSeguro = DOMPurify.sanitize(html);
+// luego [innerHTML]="htmlSeguro"
 ```
 
-Nunca hacer `[innerHTML]="respuestaDelBot"` directo ni `[innerHTML]="html"` sin pasar por `DOMPurify.sanitize()` — el contenido sale de un modelo de IA (Groq) y se trata como no confiable, igual que cualquier input externo. Esto aplica al componente `chat-bubble` en su variante bot.
+Nunca `[innerHTML]="respuestaDelBot"` directo — el contenido viene de Groq y es no confiable. Aplica a `chat-bubble` futuro y a cualquier render de `modulos.lecciones.contenido`.

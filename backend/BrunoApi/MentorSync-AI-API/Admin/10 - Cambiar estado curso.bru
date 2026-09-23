@@ -1,0 +1,28 @@
+meta {
+  name: 10 - Cambiar estado curso
+  type: http
+  seq: 10
+}
+
+patch {
+  url: {{baseUrl}}/api/cursos/{{courseId}}/estado
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "estado": "archivado"
+  }
+}
+
+docs {
+  Cambia el estado del curso guardado en courseId por el request 8.
+  Valores válidos: borrador, publicado, archivado.
+  Antes de este cambio el admin recibía 403 aquí; ahora tiene bypass total.
+}

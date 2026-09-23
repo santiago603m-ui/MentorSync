@@ -1,8 +1,8 @@
 import { Component, OnInit, AfterViewInit, HostListener, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import gsap from 'gsap';
-import { CursoService } from '../../../../core/services/curso.service';
-import { Curso } from '../../../../models/curso.model';
+import { CursoService } from "../../core/services/curso.service";
+import { Curso } from '../../models/curso.model';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 

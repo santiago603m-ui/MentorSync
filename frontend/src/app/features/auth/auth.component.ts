@@ -3,9 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
-import { AuthService } from '../../../core/services/auth.service';
-import { AuthRespuesta } from '../../../models/auth.model';
-import { VantaBackgroundComponent } from '../../../shared/components/vanta-background/vanta-background.component';
+import { AuthService } from '../../core/services/auth.service';
+import { AuthRespuesta } from '../../models/auth.model';
+import { VantaBackgroundComponent } from '../../shared/components/vanta-background/vanta-background.component';
 
 @Component({
   selector: 'app-auth',

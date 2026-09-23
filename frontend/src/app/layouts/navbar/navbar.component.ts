@@ -2,8 +2,6 @@ import { Component, OnInit, HostListener, signal, computed, inject } from '@angu
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
-import { ThemeService } from '../../shared/services/theme.service';
-import { LogoComponent } from '../../shared/components/logo/logo.component';
 
 type Rol = 'aprendiz' | 'mentor' | 'administrador';
 
@@ -30,16 +28,13 @@ function decodificarPayloadJWT(token: string): { id: string; rol: Rol; email: st
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [CommonModule, RouterModule, LogoComponent],
+  imports: [CommonModule, RouterModule],
   template: `
     <nav class="navbar" [class.scrolled]="scrolled()">
       <div class="navbar-inner">
-       <a class="brand" routerLink="/" aria-label="Ir al inicio">
-  <div class="logo-wrapper">
-    <app-logo></app-logo>
-  </div>
-  <span class="brand-name">MentorSync<span class="brand-accent">AI</span></span>
-</a>
+        <a class="brand" routerLink="/" aria-label="Ir al inicio">
+          <span class="brand-name">MentorSync<span class="brand-accent">AI</span></span>
+        </a>
 
         <button
           class="menu-toggle"
@@ -70,17 +65,6 @@ function decodificarPayloadJWT(token: string): { id: string; rol: Rol; email: st
           <ng-container *ngIf="!isLoggedIn() && !isHomePage()">
             <button (click)="goHome()" class="nav-link">Volver al inicio</button>
           </ng-container>
-
-          <button
-            class="theme-toggle"
-            type="button"
-            (click)="theme.toggle()"
-            [attr.aria-pressed]="theme.isCyberpunk()"
-            [title]="theme.isCyberpunk() ? 'Volver al tema oscuro' : 'Activar tema cyberpunk'"
-          >
-            <span class="theme-toggle-dot"></span>
-            {{ theme.isCyberpunk() ? 'Cyberpunk' : 'Modo normal' }}
-          </button>
 
           <button *ngIf="isLoggedIn()" (click)="logout()" class="btn accent">Cerrar sesión</button>
         </div>
@@ -150,21 +134,15 @@ function decodificarPayloadJWT(token: string): { id: string; rol: Rol; email: st
       flex-shrink: 0;
     }
 
-    .logo-wrapper {
-  width: 36px;
-  height: 36px;
-  overflow: hidden;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.logo-wrapper app-logo {
-  transform: scale(0.09); /* Escala el logo de 400px a ~36px */
-  transform-origin: center center;
-  pointer-events: none; /* Evita que las animaciones interfieran con clicks */
-}
+    .brand-name {
+      font-family: var(--font-display, inherit);
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--text-primary, #fff);
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+    }
+    .brand-accent { color: var(--accent-cyan, #22D3EE); }
 
     /* LOGO CSS */
     .brand-logo {
@@ -192,15 +170,7 @@ function decodificarPayloadJWT(token: string): { id: string; rol: Rol; email: st
       line-height: 1;
     }
 
-    .brand-name {
-      font-family: var(--font-display, inherit);
-      font-weight: 700;
-      font-size: 1.15rem;
-      color: var(--text-primary, #fff);
-      letter-spacing: -0.01em;
-      white-space: nowrap;
-    }
-    .brand-accent { color: var(--accent-cyan, #22D3EE); }
+
 
     .menu-toggle {
       display: none;
@@ -288,44 +258,7 @@ function decodificarPayloadJWT(token: string): { id: string; rol: Rol; email: st
     }
     .btn.accent:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(139, 107, 255, 0.4); }
 
-    .theme-toggle {
-      display: flex;
-      align-items: center;
-      gap: 0.45rem;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: var(--radius-pill, 999px);
-      color: var(--text-secondary, #c7c7d6);
-      font-weight: 600;
-      font-size: 0.8rem;
-      padding: 0.45rem 0.9rem 0.45rem 0.6rem;
-      cursor: pointer;
-      transition: border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
-      white-space: nowrap;
-    }
-    .theme-toggle-dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: var(--accent-gradient, linear-gradient(135deg, #7C5CFF, #22D3EE));
-    }
-    .theme-toggle:hover {
-      border-color: var(--accent-cyan, #22D3EE);
-      color: var(--text-primary, #fff);
-    }
-    body.theme-cyberpunk .theme-toggle {
-      border-color: var(--accent-cyan, #22D3EE);
-      box-shadow: 0 0 12px rgba(0, 255, 247, 0.35);
-    }
-    body.theme-cyberpunk .theme-toggle-dot {
-      box-shadow: 0 0 8px var(--accent-cyan, #22D3EE), 0 0 14px var(--accent-violet, #7C5CFF);
-    }
-    body.theme-cyberpunk .navbar {
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.1),
-        0 0 28px rgba(0, 255, 247, 0.14),
-        0 8px 32px rgba(0, 0, 0, 0.35);
-    }
+
 
     @media (max-width: 768px) {
       .navbar { width: calc(100% - 1.4rem); top: 0.8rem; }
@@ -354,7 +287,6 @@ function decodificarPayloadJWT(token: string): { id: string; rol: Rol; email: st
 })
 export class NavbarComponent implements OnInit {
   private router = inject(Router);
-  public theme = inject(ThemeService);
 
   isLoggedIn = signal(false);
   rol = signal<Rol | null>(null);

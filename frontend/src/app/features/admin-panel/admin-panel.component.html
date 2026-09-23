@@ -1,0 +1,195 @@
+<div class="mentor-layout">
+  <!-- Sidebar pantalla completa izquierda - glass + auto-hide al hover -->
+  <app-sidebar
+    title="MentorSync AI"
+    [sections]="menuLateral"
+    [active]="tabActual"
+    (seleccionar)="cambiarTab($event)"
+  />
+
+  <div class="panel-body">
+    <main class="main-content">
+      <div class="content-limiter">
+
+        @if (error) {
+          <div class="alert-error">
+            <i class="fas fa-exclamation-circle"></i> {{ error }}
+            <button class="btn-mini" (click)="cargarTodo()">Reintentar</button>
+          </div>
+        }
+
+        @if (cargando) {
+          <section class="card-section"><p class="loading">Cargando datos del sistema…</p></section>
+        } @else {
+
+          @if (tabActual === 'dashboard') {
+            <section class="section-container">
+              <app-admin-dashboard-quick
+                [resumen]="resumen"
+                [cursos]="cursosPorEstado"
+                [totalInscripciones]="totalInscripciones"
+                [usuariosActivos]="usuariosActivos"
+                [crecimiento]="crecimientoMensual">
+              </app-admin-dashboard-quick>
+            </section>
+          }
+
+          @if (tabActual === 'usuarios') {
+            <section class="card-section">
+              <div class="section-header">
+                <h3><i class="fas fa-users-cog"></i> Usuarios ({{ usuariosFiltrados.length }})</h3>
+                <div class="header-actions">
+                  <select class="filter-select" [(ngModel)]="filtroRol">
+                    <option value="">Todos los roles</option>
+                    <option value="administrador">Administrador</option>
+                    <option value="mentor">Mentor</option>
+                    <option value="aprendiz">Aprendiz</option>
+                  </select>
+                  <div class="search-wrapper">
+                    <i class="fas fa-search search-icon"></i>
+                    <input class="search-input" placeholder="Buscar nombre o email..." [(ngModel)]="filtroUsuario" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="table-wrapper">
+                <table class="data-table">
+                  <thead>
+                    <tr><th>Usuario</th><th>Rol</th><th>Estado</th><th class="text-right">Acciones</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (u of usuariosFiltrados; track u._id) {
+                      <tr>
+                        <td><strong>{{ u.nombre }}</strong><br /><small class="text-muted">{{ u.email }}</small></td>
+                        <td>
+                          <select class="mini-select" [ngModel]="u.rol" (ngModelChange)="cambiarRol(u._id, $event)">
+                            <option value="administrador">Administrador</option>
+                            <option value="mentor">Mentor</option>
+                            <option value="aprendiz">Aprendiz</option>
+                          </select>
+                        </td>
+                        <td>
+                          <span class="badge" [ngClass]="{'badge-success': u.activo, 'badge-danger': !u.activo}">
+                            {{ u.activo ? 'Activo' : 'Inactivo' }}
+                          </span>
+                        </td>
+                        <td class="text-right">
+                          <button class="btn-icon btn-approve" (click)="toggleActivo(u)" [title]="u.activo ? 'Desactivar' : 'Activar'">
+                            <i class="fas fa-power-off"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="4" class="text-muted">Sin usuarios para este filtro.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          }
+
+          @if (tabActual === 'cursos') {
+            <section class="card-section">
+              <div class="section-header">
+                <h3><i class="fas fa-graduation-cap"></i> Cursos ({{ cursos.length }})</h3>
+                <button class="btn-cyan-glow" (click)="abrirModalCurso()"><i class="fas fa-plus"></i> Nuevo Curso</button>
+              </div>
+              <div class="courses-grid">
+                @for (c of cursos; track c._id) {
+                  <div class="course-card">
+                    <h4>{{ c.titulo }}</h4>
+                    <p class="category"><i class="fas fa-tag"></i> {{ c.categoria }} · <i class="fas fa-chalkboard-teacher"></i> {{ nombreMentor(c) }}</p>
+                    <div class="course-info">
+                      <span><i class="fas fa-user-friends"></i> {{ c.inscritos?.length ?? 0 }}</span>
+                      <select class="mini-select" [ngModel]="c.estado" (ngModelChange)="cambiarEstadoCurso(c, $event)">
+                        <option value="borrador">Borrador</option>
+                        <option value="publicado">Publicado</option>
+                        <option value="archivado">Archivado</option>
+                      </select>
+                    </div>
+                    <div class="course-actions">
+                      <button class="btn-mini danger" (click)="eliminarCurso(c._id)">Eliminar</button>
+                    </div>
+                  </div>
+                } @empty {
+                  <p class="text-muted">No hay cursos registrados.</p>
+                }
+              </div>
+            </section>
+          }
+
+          @if (tabActual === 'inscripciones') {
+            <section class="card-section">
+              <div class="section-header"><h3><i class="fas fa-tasks"></i> Inscripciones ({{ totalInscripciones }})</h3></div>
+              <div class="table-wrapper">
+                <table class="data-table">
+                  <thead><tr><th>Curso</th><th>Aprendiz</th><th>Correo</th></tr></thead>
+                  <tbody>
+                    @for (c of cursos; track c._id) {
+                      @for (i of c.inscritos; track i._id || i.correo) {
+                        <tr>
+                          <td><strong>{{ c.titulo }}</strong></td>
+                          <td>{{ i.nombre }}</td>
+                          <td><span class="text-muted">{{ i.correo }}</span></td>
+                        </tr>
+                      }
+                    } @empty {
+                      <tr><td colspan="3" class="text-muted">Aún no hay inscripciones.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          }
+
+        }
+
+      </div>
+    </main>
+  </div>
+
+  @if (mostrarModalCurso) {
+    <div class="modal-backdrop">
+      <div class="modal-card">
+        <h3>Nuevo Curso</h3>
+        <div class="form-group"><label>Título (mín. 3 caracteres)</label><input class="form-input" [(ngModel)]="nuevoCurso.titulo" /></div>
+        <div class="form-group"><label>Descripción (mín. 10 caracteres)</label><input class="form-input" [(ngModel)]="nuevoCurso.descripcion" /></div>
+        <div class="form-group"><label>Categoría</label><input class="form-input" [(ngModel)]="nuevoCurso.categoria" /></div>
+        <div class="form-group"><label>Mentor asignado</label>
+          <select class="form-input" [(ngModel)]="nuevoCurso.mentor">
+            <option value="">Seleccionar mentor…</option>
+            @for (m of mentoresDisponibles; track m._id) {
+              <option [value]="m._id">{{ m.nombre }} ({{ m.email }})</option>
+            }
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel" (click)="mostrarModalCurso = false">Cancelar</button>
+          <button class="btn-cyan-glow" (click)="guardarCurso()">Guardar</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (mostrarModalUsuario) {
+    <div class="modal-backdrop">
+      <div class="modal-card">
+        <h3>Nuevo Usuario</h3>
+        <div class="form-group"><label>Nombre</label><input class="form-input" [(ngModel)]="nuevoUsuario.nombre" /></div>
+        <div class="form-group"><label>Email</label><input class="form-input" [(ngModel)]="nuevoUsuario.email" /></div>
+        <div class="form-group"><label>Contraseña (mín. 8 caracteres)</label><input type="password" class="form-input" [(ngModel)]="nuevoUsuario.contrasena" /></div>
+        <div class="form-group"><label>Rol</label>
+          <select class="form-input" [(ngModel)]="nuevoUsuario.rol">
+            <option value="aprendiz">Aprendiz</option>
+            <option value="mentor">Mentor</option>
+            <option value="administrador">Administrador</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel" (click)="mostrarModalUsuario = false">Cancelar</button>
+          <button class="btn-cyan-glow" (click)="guardarUsuario()">Guardar</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

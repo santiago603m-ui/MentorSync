@@ -1,0 +1,27 @@
+meta {
+  name: 5 - Cambiar estado
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/api/usuarios/{{userId}}/estado
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "activo": false
+  }
+}
+
+docs {
+  Activa o desactiva al usuario guardado en userId.
+  No permite desactivar tu propia cuenta (403).
+}

@@ -12,6 +12,10 @@ class ChatMessageRepository {
   async listarPorCurso(courseId, limite = 50) {
     return ChatMessage.find({ courseId }).sort({ createdAt: -1 }).limit(limite);
   }
+
+  async listarPorSesion(liveSessionId, limite = 100) {
+    return ChatMessage.find({ liveSessionId }).sort({ createdAt: 1 }).limit(limite);
+  }
 }
 
 export default new ChatMessageRepository();

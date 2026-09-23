@@ -2,7 +2,7 @@
 
 ## Módulos: ESM (no CommonJS)
 
-`backend/package.json` tiene `"type": "module"`. Todo el código del backend se escribe con `import`/`export`, nunca `require()`/`module.exports`:
+`backend/package.json` tiene `"type": "module"`. Siempre `import`/`export` con extensión `.js`:
 
 ```js
 // ✅ correcto
@@ -14,131 +14,93 @@ const User = require('../models/user.model.js');
 module.exports = authService;
 ```
 
-Nota: en imports relativos de ESM en Node, la extensión `.js` es obligatoria (`'../models/user.model.js'`, no `'../models/user.model'`).
-
 ## Manejo de errores
 
-Los servicios lanzan errores usando la clase `AppError` (`utils/AppError.js`), que incluye `statusCode`. Nunca `throw new Error('mensaje')` a secas — el middleware de errores centralizado necesita el código HTTP:
-
-```js
-// utils/AppError.js
-export class AppError extends Error {
-  constructor(message, statusCode) {
-    super(message);
-    this.statusCode = statusCode;
-  }
-}
-
-// en un service:
-if (usuarioExistente) {
-  throw new AppError('El correo ya se encuentra registrado', 409);
-}
-```
-
-Los controllers no traducen errores a códigos HTTP — solo hacen `try { ... } catch (error) { next(error) }`, y `middlewares/error.middleware.js` lee `error.statusCode || 500`.
+Services lanzan `AppError` (`utils/AppError.js`, `new AppError(message, statusCode)`). Controllers hacen `try { } catch (e) { next(e) }` y `middlewares/error.middleware.js` responde `{ success:false, error:{message} }` (oculta mensaje en 500).
 
 ## Validación de input
 
-Usar `zod` en `validators/` para validar `req.body` **antes** de que llegue al service — nunca confiar en que el frontend ya validó. Un service nunca debe recibir datos sin validar del controller.
+Usar `zod` v4 en `validators/` antes del service. El service nunca recibe datos sin validar.
+
+Validators reales: `auth.validator.js` (`esquemaRegistro`, `esquemaInicioSesion`), `course.validator.js` (`esquemaCrearCurso`, `esquemaActualizarCurso`, `esquemaCambiarEstado` con `error:` no `errorMap`), `chat.validator.js` (`esquemaPregunta` con `threadId` UUID), `user.validator.js` (`esquemaCrearUsuario`, `esquemaCambiarRol`, `esquemaCambiarEstado`).
 
 ## Flujo de una request
 
 ```
-Route → Middleware (auth + role) → Controller → Service → Repository → Model → MongoDB
+Route → Middleware (auth + role) → validar (Zod) → Controller → Service → Repository → Model → MongoDB
 ```
 
-- El **Controller** nunca contiene lógica de negocio, solo valida el request (delega a `validators/`), llama al `Service` correspondiente y da forma a la respuesta.
-- El **Service** contiene la lógica de negocio y orquesta repositorios/otros servicios.
-- El **Repository** es el único lugar que habla directamente con Mongoose.
+- **Controller** solo valida shape HTTP y llama al Service.
+- **Service** orquesta repositories/otros services.
+- **Repository** única capa que toca Mongoose.
+
+Controllers/Services reales: `auth, course (con inscribir/cancelar/generarEstructura), document, chat, user` + repositories espejo + `embedding`, `rag`, `groq.provider`.
 
 ## Formato estándar de respuesta API
 
 ```json
-{
-  "success": true,
-  "data": { },
-  "message": "Curso creado correctamente"
-}
+{ "success": true, "data": { }, "message": "Curso creado correctamente" }
 ```
+Error: `{ "success": false, "error": { "message": "..." } }` (pasado por `manejarErrores`).
 
-Error:
+> `course.controller.js` ya fue unificado a `{ success, data, message }` (antes usaba `{exito, curso}` — corregido en 2026-09).
 
-```json
-{
-  "success": false,
-  "error": {
-    "code": "COURSE_NOT_FOUND",
-    "message": "El curso no existe"
-  }
-}
-```
+## Socket.io — reuniones en vivo
 
-Todos los errores pasan por `middlewares/error.middleware.js` — no usar `try/catch` con `res.json` disperso en cada controller; usar `next(error)` y dejar que el middleware centralice el formato.
+- Servidor HTTP creado con `createServer(app)` + `new Server(httpServer, {cors:{origin:'*'}})` en `server.js` (`httpServer.listen` reemplaza `app.listen`).
+- Auth de socket reutiliza `JWT_SECRET`: `socket.handshake.auth.token` o header `Authorization: Bearer` → `jwt.verify` → `socket.usuario = {id, rol, email}`. Si falla, `next(new Error('Token...'))` rechaza la conexión.
+- Rooms por `sesion:${liveSessionId}` (una sala por `LiveSession`). Eventos cliente→servidor con callback `{success, message, code, data}`:
+  - `sala:unirse {liveSessionId}` → verifica `liveSessionService.obtenerPorId`, si `estado==='cancelada'` → 403, `socket.join(room)`, `agregarAsistente`, `socket.to(room).emit('sala:usuario_unido')`.
+  - `sala:mensaje {liveSessionId, contenido}` → verifica `socket.rooms.has(room)` (debe haberse unido), valida 1-2000 chars, `liveSessionService.obtenerPorId` → `chatMessageRepository.crear({courseId, liveSessionId, remitenteId, rolRemitente, contenido, esRespuestaBot:false})` → `io.to(room).emit('sala:mensaje_nuevo', payload)`.
+  - `sala:escribiendo {liveSessionId, escribiendo}` → `socket.to(room).emit('sala:escribiendo')`.
+  - `sala:abandonar {liveSessionId}` → `socket.leave(room)` + `sala:usuario_salio`.
+  - `bot_activado {liveSessionId}` → broadcast `bot_activado` (mentor desconectado, IA toma relevo).
+- `disconnect` → para cada `liveSessionId` en `socket.data.sesiones`, broadcast `sala:usuario_salio` y si `rol==='mentor'` también `mentor_desconectado` (permite al frontend mostrar aviso y activar el bot).
+- Validación de mensajes con `esquemaMensajeSala` (Zod) en frontend y `trim().length` en socket; `liveSession` estados `programada|en_curso|finalizada|cancelada` validados por `esquemaCambiarEstadoSesion`.
 
 ## Control de acceso por rol (RBAC)
 
 ```js
 // middlewares/role.middleware.js
-const requireRole = (...rolesPermitidos) => (req, res, next) => {
-  if (!rolesPermitidos.includes(req.user.rol)) {
-    return next(new ForbiddenError('No tienes permiso para esta acción'));
-  }
+const requireRole = (...roles) => (req,res,next) => {
+  if (!roles.includes(req.user.rol)) return next(new AppError('No tienes permiso', 403));
   next();
 };
-
-// uso en routes:
-router.post('/courses', auth, requireRole('mentor', 'administrador'), courseController.create);
+// uso:
+router.post('/cursos', verificarToken, verificarRol('mentor','administrador'), courseController.crearCurso);
 ```
+
+Además `course.service.verificarPropiedad(curso, mentorId, rol)` hace bypass si `rol==='administrador'`; si no, compara `curso.mentor` vs `mentorId` y lanza 403. User admin (`/api/usuarios`) es `router.use(verificarToken, verificarRol('administrador'))` + anti auto-cambio en `user.service` (`cambiarRol`/`cambiarEstado` compara `solicitanteId`).
+
+Roles en `users.rol`: siempre minúsculas español (`aprendiz|mentor|administrador`).
 
 ## Reglas para el módulo de IA (`services/ai/`)
 
-1. Nunca llamar a la API de Groq directamente desde un controller — siempre a través de `rag.service.js`.
-2. Toda búsqueda de contexto (`$vectorSearch`) DEBE filtrar por `courseId`. No exponer un endpoint que busque en todos los cursos a la vez.
-3. El procesamiento de PDFs (chunking + embeddings) va en `jobs/`, nunca de forma síncrona en el request de subida del archivo — el mentor sube el PDF y recibe respuesta inmediata; el procesamiento ocurre en background.
-4. Cualquier nuevo proveedor de IA debe implementar la interfaz `IAssistantProvider` (ver `01_ARCHITECTURE.md`) — no acoplar el código de negocio al SDK de Groq directamente.
+1. Nunca llamar a Groq desde un controller — siempre vía `rag.service.js` o `course.service.generarEstructuraCurso`.
+2. Toda `$vectorSearch` DEBE filtrar por `courseId` (store lógico por curso).
+3. El pipeline PDF **es síncrono dentro del request** (`document.service.subirDocumento`): multer → Cloudinary `raw` → `pdf-parse` → `fragmentarTexto(1000,200)` → embeddings → `guardarLote`. Futuro: extraer a Bull/BullMQ para PDFs >10 MB (hoy `src/jobs/` vacío).
+4. Nuevo proveedor de IA implementa `IAssistantProvider` (ver `assistant-provider.interface.js`) — `rag.service` y `generarEstructuraCurso` solo conocen la interfaz.
 
 ## Nomenclatura
 
 - Archivos: `kebab-case` (`course.service.js`)
 - Clases: `PascalCase`
-- Variables/funciones: `camelCase`
-- Colecciones de MongoDB: `camelCase` en plural (`knowledgeChunks`, `chatMessages`)
-- Roles almacenados en `users.rol`: siempre en minúsculas y en español (`"aprendiz"`, `"mentor"`, `"administrador"`) — no mezclar con inglés en otras partes del código.
+- Variables: `camelCase`
+- Colecciones Mongo: plural (`cursos`, `usuarios`, `knowledgechunks`, `chatmessages`)
 
 ## Logging
 
-Se usa `pino` + `pino-http`, nunca `console.log` ni `morgan`. En desarrollo, `pino-pretty` formatea la salida de forma legible (ya está en `devDependencies`):
-
-```js
-// server.js
-const pinoHttp = require('pino-http');
-app.use(pinoHttp());
-```
-
-Dentro de servicios/controllers, usar el logger inyectado por `pino-http` (`req.log`) en vez de instanciar un logger nuevo cada vez.
+`pino` + `pino-http` (JSON, `pino-pretty` en dev). Usar `req.log` inyectado por `pinoHttp()`, no `console.log`.
 
 ## Documentación de API (Swagger)
 
-Los endpoints se documentan con comentarios JSDoc que `swagger-jsdoc` lee para generar el spec OpenAPI, servido con `swagger-ui-express` en `/api-docs`:
+`swagger-jsdoc` + `swagger-ui-express` instalados pero no montados (`// TODO` en `server.js` → `/api-docs` pendiente). No dejar endpoints nuevos sin bloque `@openapi` (hoy ninguno tiene).
 
-```js
-/**
- * @openapi
- * /courses:
- *   post:
- *     summary: Crea un curso nuevo
- *     tags: [Courses]
- */
-router.post('/courses', ...);
-```
+## Seguridad en `server.js`
 
-No dejar endpoints nuevos sin su bloque `@openapi` — la doc de Swagger es la referencia que se usa para probar la API mientras se desarrolla el frontend.
+`helmet`, `cors`, `compression`, `express.json()`, `express-mongo-sanitize`, `pinoHttp()`, `express-rate-limit` (300/15min) montados globales antes de `app.use('/api/...')`. Rutas montadas: `/api/auth`, `/api/usuarios`, `/api/cursos` (×3: course, document, chat). El middleware `manejarErrores` va al final.
 
-## Seguridad aplicada en `server.js`
-
-`helmet` (headers seguros), `cors`, `compression`, `express-mongo-sanitize` (previene NoSQL injection en `req.body`, `req.query` y `req.params` — en Express 4 los tres son escribibles, así que el paquete funciona sin workarounds) y `express-rate-limit` van montados como middlewares globales antes de las rutas. No remover ninguno sin justificarlo aquí.
-
-## Variables de entorno esperadas (`.env`)
+## Variables de entorno (`.env`)
 
 ```
 PORT=
@@ -148,8 +110,10 @@ JWT_EXPIRES_IN=
 CLOUDINARY_CLOUD_NAME=
 CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
+GROQ_API_KEY=
+GROQ_MODEL=
 ```
 
-**Nota:** `GROQ_API_KEY` se usará cuando se implemente el chatbot RAG (el SDK ya está instalado), pero no es obligatoria por ahora.
+`scripts/check-setup.js` valida `PORT`, `MONGODB_URI`, `JWT_SECRET`, `GROQ_API_KEY`, `GROQ_MODEL`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (8 vars). Correr `npm run check-setup` antes de levantar el server.
 
-Antes de levantar el servidor, correr `npm run check-setup` (`scripts/check-setup.js`) para validar que todas estén presentes. ⚠️ **El script actual está desactualizado** — valida `GROQ_API_KEY` (que ya no está en `.env.example`) pero no valida las de Cloudinary (que sí son obligatorias desde que se implementó el módulo de documentos).
+Engines: `node >=24.20.0`. Deps nuevas: `sharp@0.35.4`, `validator@13.15.35`.

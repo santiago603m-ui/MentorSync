@@ -1,0 +1,28 @@
+meta {
+  name: 4 - Cambiar rol
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/usuarios/6ab137de01bd56e1233afdc0/rol
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "rol": "admin"
+  }
+}
+
+docs {
+  Cambia el rol del usuario guardado en userId por el request 2.
+  Valores válidos: aprendiz, mentor, administrador.
+  No permite cambiar tu propio rol (403).
+}

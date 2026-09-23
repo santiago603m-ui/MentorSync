@@ -19,31 +19,34 @@ Plataforma web de mentoría híbrida con asistente de IA por curso (RAG).
 
 ## Stack
 
-**Backend:** Node.js + Express + MongoDB Atlas + Mongoose  
-**Frontend:** Angular (pendiente de implementar)  
-**IA/RAG:** ✅ Groq API (Llama) + ✅ @xenova/transformers (embeddings locales) + ✅ MongoDB Atlas Vector Search  
-**Storage:** Cloudinary (PDFs)  
-**Realtime:** Socket.io (sesiones mentor↔aprendiz, pendiente) | El chat con el bot ya funciona (HTTP)
+**Backend:** Node.js 24.20 + Express 4.21 + MongoDB Atlas + Mongoose 8.9  
+**Frontend:** Angular 22 (standalone, signal-first) + glassmorphism + Vanta.js + GSAP/anime.js  
+**IA/RAG:** ✅ Groq API (Llama 3.3 70B) + ✅ @xenova/transformers (`all-MiniLM-L6-v2`, 384D, local) + ✅ MongoDB Atlas Vector Search  
+**Storage:** Cloudinary (PDFs, `resource_type: 'raw'`) + sharp (imágenes)  
+**Realtime:** ✅ Socket.io para reuniones en vivo (`sockets/index.js`, `liveSession` + `ChatMessage.liveSessionId`, rooms `sesion:{id}`) + chat bot HTTP  
+**Seguridad:** helmet, cors, compression, express-mongo-sanitize, express-rate-limit, validator, pino
 
 ## Estado del proyecto
 
 ### ✅ Implementado
-- Auth (registro, login, JWT, RBAC por rol: aprendiz/mentor/administrador)
-- CRUD de cursos con soft delete y control de propiedad
-- Pipeline de chunking y embeddings: subida de PDF → extracción de texto → fragmentación → generación de vectores (384D con `Xenova/all-MiniLM-L6-v2`) → guardado en MongoDB
-- Almacenamiento de PDFs en Cloudinary
-- **Búsqueda vectorial** con MongoDB Atlas `$vectorSearch` (cosine similarity, filtro obligatorio por `courseId`)
-- **Chatbot RAG funcional end-to-end**: pregunta → embeddings → búsqueda semántica → generación con Groq (Llama) → guardado en historial
-- Integración con Groq API (Strategy Pattern con `IAssistantProvider`)
-- Middlewares: autenticación, roles, validación con Zod v4, error handler centralizado
-- Logging estructurado con Pino
-- Rate limiting, CORS, helmet, mongo-sanitize
-- **Repository Pattern completo** en todos los módulos (auth, course, document, chat, knowledgeChunk)
+- Auth completa (registro, login, JWT, RBAC por rol: `aprendiz`/`mentor`/`administrador`, guards e interceptores en frontend)
+- CRUD de cursos con soft delete, control de propiedad y **bypass de administrador** (`verificarPropiedad(curso, mentorId, rol)`)
+- Inscripciones embebidas en el modelo `Curso` (`inscritos: [{ id, nombre, correo }]`) — endpoints `POST /api/cursos/:id/inscribir` y `DELETE /api/cursos/:id/inscritos/:inscritoId`
+- Generación de estructura tipo Platzi vía Groq (`POST /api/cursos/:id/generar-estructura`) → `modulos[] > lecciones[]` + `contenidoTextoPlano`
+- Módulo admin completo: `GET /api/usuarios`, `GET /api/usuarios/resumen`, `POST /api/usuarios`, `PATCH /api/usuarios/:id/rol`, `PATCH /api/usuarios/:id/estado` (solo `administrador`, con validación de no auto-cambio de rol/estado) + `GET /api/cursos/admin/todos`
+- Pipeline de chunking y embeddings: subida de PDF → extracción con `pdf-parse` → fragmentación (1000 chars, overlap 200) → embeddings 384D con `Xenova/all-MiniLM-L6-v2` → guardado en `knowledgechunks` (batch) → documento `completado` con URL Cloudinary
+- **Búsqueda vectorial** con Atlas `$vectorSearch` (cosine, `numCandidates = limite*20`, filtro obligatorio por `courseId`)
+- **Chatbot RAG end-to-end**: pregunta → embedding → vectorSearch (5 chunks) → prompt + Groq → guardado en `chatmessages` (`threadId` UUID)
+- Frontend funcional: Home con hero SVG animado + spotlight/marque + timeline glass, Auth unificada (`/auth` con redirect `/login`/`/registro`), Cursos, dashboards por rol (`/aprendiz`, `/mentor`, `/admin` con `roleGuard`), Admin panel (KPIs, doughnut roles, barras semanales, crecimiento mensual, tabla usuarios con editar rol/estado, CRUD cursos con estados `borrador|publicado|archivado`), sidebar Atlas (rail 56px + explorer 280px, auto-hide hover, glassmorphism) + Vanta background + ThemeService (`dark`/`light` + cyberpunk)
+- Reuniones en vivo: `LiveSession` (programada/en_curso/finalizada/cancelada) + `ChatMessage.liveSessionId` + Socket.io rooms `sesion:{id}` (eventos `sala:unirse/mensaje/escribiendo/abandonar`, broadcasts `sala:*`, `mentor_desconectado`, `bot_activado`)
+- Repository Pattern estricto en todos los módulos (auth, course, document, knowledgeChunk, chatMessage, user, liveSession)
+- Middlewares: auth, role, validar (Zod v4), error centralizado
+- Logging estructurado con `pino` + `pino-http`, rate limiting, CORS, helmet, mongo-sanitize
+- Colección Bruno completa: Auth (6), Courses (4), Chat (4), Admin (11) + PDFs de prueba
 
 ### 🚧 En desarrollo / Pendiente
-- Chat en vivo con Socket.io para sesiones sincrónicas mentor↔aprendiz (el chat con el bot ya funciona)
-- Frontend completo en Angular
-- Swagger UI (`swagger-jsdoc` y `swagger-ui-express` instalados pero no montados)
+- Swagger UI (`swagger-jsdoc` + `swagger-ui-express` instalados pero no montados en `/api-docs`)
+- `enrollments` como colección separada (hoy `inscritos` embebido en `Curso`; `liveSessions` ya tiene modelo + repository/service + Socket.io implementados)
 
 ## Estructura
 
@@ -52,40 +55,45 @@ mentorsync-ai/
 ├── backend/              # API Express + pipeline RAG
 │   ├── src/
 │   │   ├── config/       # database.js, cloudinary.js
-│   │   ├── controllers/  # auth, course, document
+│   │   ├── controllers/  # auth, course, document, chat, user
 │   │   ├── middlewares/  # auth, role, validar, error
-│   │   ├── models/       # Mongoose schemas (7 modelos)
-│   │   ├── repositories/ # course, document, knowledgeChunk
-│   │   ├── routes/       # auth, course, document
-│   │   ├── services/     # auth, course, document, embedding
+│   │   ├── models/       # Usuario, Curso, Document, KnowledgeChunk, ChatMessage, Enrollment, LiveSession
+│   │   ├── repositories/ # auth, course, document, knowledgeChunk, chatMessage, user
+│   │   ├── routes/       # auth, course, document, chat, user (/api/usuarios)
+│   │   ├── services/     # auth, course, document, embedding, rag, groq, chat, user
+│   │   │   └── ai/providers/ # assistant-provider.interface, groq.provider
 │   │   ├── utils/        # AppError, textChunker
-│   │   ├── validators/   # Zod schemas (auth, course)
-│   │   └── server.js
+│   │   ├── validators/   # auth, course, chat, user (Zod v4)
+│   │   └── server.js     # monta /api/auth, /api/usuarios, /api/cursos (×3)
 │   ├── scripts/          # check-setup.js, test-cloudinary.js
-│   └── package.json      # ESM ("type": "module")
-└── frontend/             # Angular (esqueleto de carpetas, sin implementar)
+│   └── package.json      # ESM ("type": "module"), engines node >=24.20
+└── frontend/             # Angular 22 standalone + SSR
     └── src/app/
-        ├── core/         # guards, interceptors, services
-        ├── features/     # auth, courses, live-session, ai-assistant, admin-panel
-        ├── shared/       # components, pipes, directives
-        └── layouts/
+        ├── core/         # guards/role.guard.ts, interceptors/auth.interceptor.ts, services (admin, auth, curso, historial)
+        ├── features/     # home (hero GSAP + marquee + timeline), auth (AuthComponent unificada), courses, admin-panel (admin-dashboard-quick + admin-panel + admin.service), mentor-dashboard, learner-dashboard, ai-assistant (.gitkeep)
+        ├── shared/       # components (sidebar Atlas, vanta-background, glass-card, button, input, logo, splash-screen), pipes/filter, services/theme.service.ts, directives
+        ├── layouts/      # navbar, responsive-layout
+        ├── models/       # admin.models, auth.model, curso.model
+        └── app.routes.ts # VantaBackgroundComponent wrapper + roleGuard (roles: 'Aprendiz'/'Mentor'/'Administrador')
 ```
 
 ## Desarrollo y Testing
 
 ### Testing de API con Bruno
 
-El proyecto incluye una colección completa de **Bruno** (alternativa open-source a Postman) en `backend/BrunoApi/MentorSync-AI-API/` con:
-- Todos los endpoints de Auth (registro, login, perfiles protegidos, casos de error)
-- Endpoints de Courses (CRUD, documentos, chunks)
+Colección en `backend/BrunoApi/MentorSync-AI-API/` con:
+- Auth (registro aprendiz/mentor, login, perfil protegido, errores)
+- Courses (listar, crear, subir documento, ver chunks)
+- Chat (pregunta nueva/mismo hilo/historial/error curso no publicado)
+- **Admin (11 casos)**: login admin, listar usuarios, resumen roles, cambiar rol/estado, errores de permiso y auto-cambio, admin todos los cursos, crear curso/usuario como admin
 - PDFs de prueba en `archivos-prueba/`
-- Ambiente local pre-configurado
+- Ambiente `Local` pre-configurado (`http://localhost:4000`)
 
 Para usarla:
 1. Instalar [Bruno](https://www.usebruno.com/)
 2. Abrir la colección desde `backend/BrunoApi/MentorSync-AI-API/`
 3. Seleccionar ambiente "Local"
-4. Los endpoints ya están listos para ejecutar
+4. Ejecutar en orden (Auth → Admin → Courses → Chat)
 
 ### Variables de entorno
 
@@ -103,6 +111,8 @@ cp .env.example .env
 #   CLOUDINARY_CLOUD_NAME=
 #   CLOUDINARY_API_KEY=
 #   CLOUDINARY_API_SECRET=
+#   GROQ_API_KEY=
+#   GROQ_MODEL=llama-3.3-70b-versatile
 
 # Verificar configuración
 npm run check-setup
@@ -111,6 +121,8 @@ npm run check-setup
 npm run dev
 # → http://localhost:4000
 ```
+
+> `scripts/check-setup.js` valida `PORT`, `MONGODB_URI`, `JWT_SECRET`, `GROQ_API_KEY`, `GROQ_MODEL`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (8 vars).
 
 ### Frontend
 
@@ -121,6 +133,8 @@ ng serve
 # → http://localhost:4200
 ```
 
+Stack frontend: Angular 22 + `animejs` + `gsap` + `three` + `vanta` + `marked` + `dompurify` + Font Awesome 6.5.2 (CDN) + Vitest (no Karma)
+
 ## Endpoints disponibles
 
 Ver [`06_API_MODELS_REFERENCE.md`](06_API_MODELS_REFERENCE.md) sección 9 para la lista completa.
@@ -129,33 +143,45 @@ Ver [`06_API_MODELS_REFERENCE.md`](06_API_MODELS_REFERENCE.md) sección 9 para l
 - `POST /api/auth/registro` — Crear usuario (aprendiz/mentor/administrador)
 - `POST /api/auth/inicio-sesion` — Login, devuelve JWT
 - `GET /api/auth/perfil-protegido` — Ruta de prueba (requiere token)
+- `GET /api/usuarios` — Listar usuarios con filtros `rol`, `busqueda`, paginado (solo administrador)
+- `GET /api/usuarios/resumen` — Conteo por rol `{ administrador, mentor, aprendiz, total }` (solo administrador)
+- `POST /api/usuarios` — Crear usuario con rol arbitrario (solo administrador)
+- `PATCH /api/usuarios/:id/rol` — Cambiar rol (no a sí mismo, solo administrador)
+- `PATCH /api/usuarios/:id/estado` — Activar/desactivar (no a sí mismo, solo administrador)
 - `GET /api/cursos` — Listar cursos publicados (público)
-- `POST /api/cursos` — Crear curso (solo mentor)
+- `GET /api/cursos/admin/todos` — Todos los cursos activos en cualquier estado (solo administrador)
+- `GET /api/cursos/mis-cursos` — Cursos del mentor autenticado (solo mentor)
+- `POST /api/cursos` — Crear curso (mentor o administrador con `body.mentor` para asignar)
 - `GET /api/cursos/:id` — Ver curso (público)
-- `PATCH /api/cursos/:id` — Actualizar curso (solo dueño)
-- `DELETE /api/cursos/:id` — Borrar curso (soft delete, solo dueño)
+- `PATCH /api/cursos/:id` / `PATCH /api/cursos/:id/estado` / `DELETE /api/cursos/:id` — Actualizar/cambiar estado/borrar (dueño o administrador)
+- `POST /api/cursos/:id/inscribir` — Inscribir aprendiz autenticado (`inscritos[]` embebido)
+- `DELETE /api/cursos/:id/inscritos/:inscritoId` — Cancelar inscripción (aprendiz)
+- `POST /api/cursos/:id/generar-estructura` — Generar `modulos/lecciones` vía Groq JSON (solo mentor dueño)
 - `POST /api/cursos/:cursoId/documentos` — Subir PDF y procesarlo (solo dueño del curso)
 - `GET /api/cursos/:cursoId/documentos` — Listar documentos de un curso
 - `GET /api/cursos/:cursoId/documentos/:documentoId/chunks` — Ver chunks generados (debugging)
-- `POST /api/cursos/:cursoId/chat` — Enviar pregunta al bot del curso (requiere autenticación, devuelve `threadId` + respuesta + fragmentos usados)
-- `GET /api/cursos/chat/historial/:threadId` — Obtener historial de un hilo de conversación
+- `POST /api/cursos/:cursoId/chat` — Enviar pregunta al bot del curso (requiere auth, curso publicado)
+- `GET /api/cursos/chat/historial/:threadId` — Historial de hilo
 
 ## Decisiones técnicas clave
 
-- **ESM puro** (`"type": "module"` en `package.json`) — no CommonJS.
-- **Embeddings locales** con `@xenova/transformers` — sin costo por request, sin latencia de red. Tradeoff: CPU-bound (~50-200ms por embedding).
-- **Procesamiento síncrono de PDFs** (dentro del request de subida) — suficientemente rápido para PDFs pequeños (<5 MB). Si se suben PDFs grandes (>10 MB), extraer a job asíncrono con Bull/BullMQ.
-- **Cloudinary** para PDFs en vez de filesystem local o S3 directo — simplicidad, CDN incluido, free tier de 10 GB.
-- **Zod v4** para validación (no v3) — API cambió: `error.issues` en vez de `error.errors`, opción `error` en vez de `errorMap`.
-- **Repository Pattern** estricto — los services nunca importan modelos directamente. ✅ Todos los módulos (auth, course, document) ya tienen su repository.
+- **ESM puro** (`"type": "module"`) — no CommonJS.
+- **Embeddings locales** con `@xenova/transformers` — sin costo por request, CPU-bound (~50-200ms por embedding).
+- **Procesamiento síncrono de PDFs** dentro del request de subida — OK para PDFs <5 MB; para >10 MB extraer a Bull/BullMQ.
+- **Inscritos embebidos** en `Curso` (`inscritos: [{id, nombre, correo}]`) en vez de colección `enrollments` separada — simple para MVP, índice `enrollments` permanece sin uso.
+- **Cloudinary** para PDFs (`resource_type: 'raw'`, carpeta `mentorsync/documentos`) — simplicidad, CDN, free tier 10 GB.
+- **Zod v4** — `error.issues` y opción `error` (no `errorMap`).
+- **Repository Pattern** estricto — services nunca importan modelos directos.
+- **Roles en minúsculas español** en Mongo (`aprendiz|mentor|administrador`) — el `roleGuard` del frontend usa `['Aprendiz','Mentor','Administrador']` (capitalizado, vía `auth.model.ts`).
+- **Tema glassmorphism** con `data-theme="light"|"dark"` + `.theme-cyberpunk` opcional vía `ThemeService` (signals `mode`/`isCyberpunk`, persiste en localStorage).
 
 ## Contribuir / Desarrollo
 
 1. Leer `00_PROJECT_CONTEXT.md` primero (siempre).
-2. Seguir convenciones de `03_BACKEND_GUIDELINES.md` (ESM, AppError, Repository Pattern, formato de respuesta).
+2. Seguir convenciones de `03_BACKEND_GUIDELINES.md` (ESM, AppError, Repository Pattern, formato `{success, data, message}`).
 3. Actualizar `05_PROGRESS.md` tras cada cambio significativo.
 4. Actualizar `06_API_MODELS_REFERENCE.md` si se agregan modelos/métodos/endpoints.
-5. Commits en español, mensajes descriptivos (`git commit -m "Se implementa pipeline de chunking y embeddings"`).
+5. Commits en español, mensajes descriptivos.
 
 ## Licencia
 

@@ -1,6 +1,6 @@
 # 🗄️ Base de Datos — MongoDB Atlas
 
-> ⚠️ Este documento refleja el esquema **realmente implementado** en `backend/src/models/`. Para el detalle método por método de cada capa (repository/service/controller), ver `06_API_MODELS_REFERENCE.md`.
+> ⚠️ Este documento refleja el esquema **realmente implementado** en `backend/src/models/`. Para el detalle método por método de cada capa, ver `06_API_MODELS_REFERENCE.md`.
 
 ## Colecciones
 
@@ -9,12 +9,12 @@
 _id
 nombre, email (único), contraseñaHash   // select:false, nunca se trae por defecto
 rol: "aprendiz" | "mentor" | "administrador"   // default "aprendiz"
-perfilMentor: { bio, especialidad, verificado }   // default: undefined — solo existe si rol = "mentor"
-activo: Boolean   // default true, borrado lógico
+perfilMentor: { bio, especialidad, verificado }   // default: undefined — solo si rol = "mentor"
+activo: Boolean   // default true, borrado lógico (filtra login y listarUsuarios)
 createdAt, updatedAt
 ```
 
-> Nota: `cursosInscritos`/`cursosCreados` como arrays embebidos en el usuario (mencionados en una versión anterior de este doc) **no se implementaron**. La relación usuario↔curso se resuelve por query (`mentor` en `cursos`, y a futuro `enrollments`), no por arrays embebidos.
+> La relación usuario↔curso no es por arrays embebidos en usuario — se resuelve por `mentor` en `cursos` y por `inscritos[]` en `cursos` (embebido) + futuro `enrollments` (sin uso).
 
 ### `cursos`  (modelo `Curso`, `course.model.js`)
 ```
@@ -22,43 +22,58 @@ _id
 mentor (ref → usuarios), requerido
 titulo (máx 120), descripcion (máx 2000), categoria
 portadaUrl: String | null
-estado: "borrador" | "publicado" | "archivado"   // default "borrador"
+estado: "borrador" | "publicado" | "archivado"   // default "publicado" (no "borrador")
 precio: Number   // default 0, min 0
 duracionEstimadaHoras: Number   // default 0, min 0
+contenidoTextoPlano: String | null   // texto extraído del PDF para Groq generar estructura
+modulos: [
+  {
+    titulo: String, requerido
+    descripcion: String
+    orden: Number
+    lecciones: [
+      { titulo: String, requerido, contenido: String, requerido, puntosClave: [String], orden: Number }
+    ]
+  }
+]
 bot: {
-  entrenado: Boolean,              // default false
+  entrenado: Boolean,              // default false, se pone true tras generarEstructuraCurso
   fechaEntrenamiento: Date | null,
   documentoOrigenNombre: String | null,
   totalChunks: Number              // default 0
 }
 activo: Boolean   // default true, borrado lógico
+inscritos: [
+  { _id: ObjectId, id: ObjectId → usuarios, nombre: String, correo: String }  // $addToSet / $pull por _id
+]
 createdAt, updatedAt
 ```
 Índices: `{ mentor: 1 }`, `{ estado: 1 }`.
 
-### `enrollments`  (modelo `Enrollment`, `enrollment.model.js`) — sin repository/service todavía
+### `enrollments`  (modelo `Enrollment`, `enrollment.model.js`) — sin repository/service (reservado)
 ```
 _id
 userId (ref → usuarios), requerido
 courseId (ref → cursos), requerido
 estado: "activo" | "completado" | "suspendido"   // default "activo"
-progreso: Number   // default 0, porcentaje 0-100 (sin min/max validado en el schema aún)
+progreso: Number   // default 0 (sin min/max en schema)
 createdAt, updatedAt
 ```
-Índice único compuesto `{ userId: 1, courseId: 1 }` — un usuario no puede inscribirse dos veces al mismo curso.
+Índice único `{ userId: 1, courseId: 1 }` — hoy no se usa (inscripciones van embebidas en `cursos.inscritos`).
 
-### `knowledgechunks`  ⭐ colección clave del RAG (modelo `KnowledgeChunk`, `knowledgeChunk.model.js`) — sin repository/service todavía
+### `knowledgechunks`  ⭐ colección clave del RAG (modelo `KnowledgeChunk`)
 ```
 _id
-courseId (ref → cursos), requerido       // filtro OBLIGATORIO en toda query del bot
+courseId (ref → cursos), requerido       // filtro OBLIGATORIO en toda $vectorSearch
 documentId (ref → documents), requerido
-texto            // fragmento del documento
-embedding: [Number]   // vector de 384 dimensiones con Xenova/all-MiniLM-L6-v2
+texto            // fragmento
+embedding: [Number]   // 384D con Xenova/all-MiniLM-L6-v2
 metadata: { pagina, seccion }
 createdAt, updatedAt
 ```
+Repository `knowledgeChunk.repository` con `guardarLote`, `buscarPorDocumento`, `eliminarPorDocumento`, `buscarSimilares(courseId, vector, limite)` (`numCandidates=limite*20`, cosine).
 
-### `documents`  (modelo `Document`, `document.model.js`) — sin repository/service todavía
+### `documents`  (modelo `Document`)
 ```
 _id
 courseId (ref → cursos), requerido
@@ -66,24 +81,26 @@ mentorId (ref → usuarios), requerido
 nombreOriginal, fileUrl, requeridos
 tipo: "pdf" | "txt" | "enlace"   // default "pdf"
 estado: "pendiente" | "procesando" | "completado" | "error"   // default "pendiente"
-errorMessage: String   // motivo del fallo si el job de procesamiento falla
+errorMessage: String
 createdAt, updatedAt
 ```
+Implementado con repository/service/controller/routes. Cloudinary `resource_type:'raw'`, carpeta `mentorsync/documentos`.
 
-### `chatmessages`  (modelo `ChatMessage`, `chatMessage.model.js`) — sin repository/service todavía
+### `chatmessages`  (modelo `ChatMessage`)
 ```
 _id
 courseId (ref → cursos), requerido
-threadId: String, indexado          // agrupa una conversación con el bot
-liveSessionId (ref → LiveSession)   // null si es chat directo con el bot fuera de sesión
-remitenteId (ref → usuarios)        // null si el remitente es el bot
+threadId: String, indexado          // UUID v4 agrupa conversación
+liveSessionId (ref → LiveSession)   // null fuera de sesión
+remitenteId (ref → usuarios)        // null si remitente es bot
 rolRemitente: "aprendiz" | "mentor" | "bot", requerido
 contenido: String, requerido
 esRespuestaBot: Boolean   // default false
 createdAt, updatedAt
 ```
+Implementado con repository (`crear`, `listarPorThread`, `listarPorCurso`) + service (`enviarPregunta` valida curso `publicado`, genera `threadId` si falta, guarda pregunta, llama RAG, guarda respuesta bot).
 
-### `livesessions`  (modelo `LiveSession`, `liveSession.model.js`) — sin repository/service todavía
+### `livesessions`  (modelo `LiveSession`) — solo modelo (sin repository)
 ```
 _id
 courseId (ref → cursos), requerido
@@ -93,14 +110,14 @@ estado: "programada" | "en_curso" | "finalizada" | "cancelada"   // default "pro
 fechaInicioProgramada: Date, requerido
 fechaInicioReal, fechaFin: Date
 urlReunion: String
-transcript: String   // opcional, si se logra grabar y transcribir
+transcript: String
 asistentes: [ObjectId] (ref → usuarios)
 createdAt, updatedAt
 ```
 
 ## Índice de Vector Search (Atlas)
 
-Definido sobre `knowledgechunks`, campo `embedding`:
+Sobre `knowledgechunks.embedding`:
 
 ```json
 {
@@ -111,7 +128,7 @@ Definido sobre `knowledgechunks`, campo `embedding`:
 }
 ```
 
-> `numDimensions` depende del modelo de embeddings usado. Con `Xenova/all-MiniLM-L6-v2` (recomendado, gratis y liviano) son 384 dimensiones. Si se cambia el modelo, actualizar aquí.
+> `numDimensions=384` para `Xenova/all-MiniLM-L6-v2`. Si cambia modelo, actualizar aquí.
 
 ## Query típica del RAG
 
@@ -133,5 +150,7 @@ db.knowledgechunks.aggregate([
 
 ## Notas operativas
 
-- Vector Search requiere cluster **M10 o superior** para producción estable (M0 sirve para desarrollo).
-- El `filter` por `courseId` es obligatorio en toda query del bot — es la barrera que evita que un curso "vea" el contenido de otro.
+- Atlas Vector Search requiere cluster **M10+** en prod (M0 sirve en dev).
+- `filter` por `courseId` es obligatorio — evita fuga entre cursos.
+- `cursos.inscritos` es embebido con `_id` propio; se manipula con `$addToSet` / `$pull: { _id }` (ver `course.repository.inscribirAprendiz`/`cancelarInscripcion`).
+- `cursos.modulos` y `contenidoTextoPlano` son nuevos (generados por Groq), no afectan el índice vectorial.

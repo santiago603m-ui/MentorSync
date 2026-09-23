@@ -21,13 +21,21 @@ router.get(
   verificarRol('mentor'),
   courseController.listarMisCursos
 );
+// Panel admin: todos los cursos en cualquier estado.
+// Va antes de '/:id' para que Express no interprete "admin" como un id
+router.get(
+  '/admin/todos',
+  verificarToken,
+  verificarRol('administrador'),
+  courseController.listarTodosAdmin
+);
 router.get('/:id', courseController.obtenerCurso);
 
-// Solo mentores, sobre sus propios cursos (el service valida propiedad)
+// Mentores sobre sus propios cursos; el administrador tiene bypass total
 router.post(
   '/',
   verificarToken,
-  verificarRol('mentor'),
+  verificarRol('mentor', 'administrador'),
   validar(esquemaCrearCurso),
   courseController.crearCurso
 );
@@ -50,18 +58,18 @@ router.post(
 router.patch(
   '/:id',
   verificarToken,
-  verificarRol('mentor'),
+  verificarRol('mentor', 'administrador'),
   validar(esquemaActualizarCurso),
   courseController.actualizarCurso
 );
 router.patch(
   '/:id/estado',
   verificarToken,
-  verificarRol('mentor'),
+  verificarRol('mentor', 'administrador'),
   validar(esquemaCambiarEstado),
   courseController.cambiarEstadoCurso
 );
-router.delete('/:id', verificarToken, verificarRol('mentor'), courseController.eliminarCurso);
+router.delete('/:id', verificarToken, verificarRol('mentor', 'administrador'), courseController.eliminarCurso);
 router.delete('/:id/inscritos/:inscritoId', verificarToken, verificarRol('aprendiz'), courseController.cancelarInscripcion);
 
 export default router;

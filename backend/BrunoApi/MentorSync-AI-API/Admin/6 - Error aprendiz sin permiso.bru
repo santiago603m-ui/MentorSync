@@ -1,0 +1,21 @@
+meta {
+  name: 6 - Error aprendiz sin permiso
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/usuarios?limite=5
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+docs {
+  Caso negativo: con token de aprendiz o mentor debe devolver 403.
+  Para probarlo, corre primero Auth/3 - Inicio de sesion (guarda un token
+  no administrador) y luego este request sin volver a correr el request 1.
+}
