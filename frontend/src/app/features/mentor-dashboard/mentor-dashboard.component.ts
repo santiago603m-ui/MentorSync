@@ -18,10 +18,13 @@ export interface Aprendiz {
 
 export interface Curso {
   id: number;
+  _id?: string;
   nombre: string;
   categoria: string;
   estado: 'Activo' | 'Inactivo';
   alumnos: number;
+  descripcion?: string;
+  bot?: { entrenado?: boolean; fechaEntrenamiento?: Date; documentoOrigenNombre?: string; totalChunks?: number };
 }
 
 export interface DiaSemana {

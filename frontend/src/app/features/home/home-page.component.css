@@ -1150,3 +1150,10 @@
   from { transform: rotateY(0) rotateX(14deg); }
   to { transform: rotateY(360deg) rotateX(14deg); }
 }
+
+.home-dot-grid-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}

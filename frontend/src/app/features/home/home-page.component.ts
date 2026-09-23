@@ -139,16 +139,28 @@ export class HomePage implements AfterViewInit, OnDestroy {
     }
   }
 
-  private cargarDotGridWave(reducido: boolean): void {
-    // Vanta es el fondo único — asegura que esté visible (por si se ocultó antes)
-    if (typeof document === 'undefined') return;
-    const vantaBg = document.querySelector<HTMLElement>('.vanta-bg');
-    if (vantaBg) {
-      vantaBg.style.opacity = '';
-      vantaBg.style.visibility = '';
-      vantaBg.style.pointerEvents = '';
-    }
-  }
+ private cargarDotGridWave(reducido: boolean): void {
+  if (typeof document === 'undefined') return;
+
+  // Oculta Vanta mientras estemos en Home — este efecto lo reemplaza aquí
+  const vantaBg = document.querySelector<HTMLElement>('.vanta-bg');
+  if (vantaBg) vantaBg.style.opacity = '0';
+  this.limpiezas.push(() => {
+    if (vantaBg) vantaBg.style.opacity = ''; // al salir de Home, Vanta vuelve
+  });
+
+  if (reducido) return; // reduced motion: deja solo el fondo estático, sin script
+
+  const SCRIPT_SRC = 'https://cdn.aidesigner.ai/effects/runtime/v1.js';
+  // Quita una carga previa (si volviste a entrar a Home) para forzar reinicialización
+  document.querySelectorAll(`script[src="${SCRIPT_SRC}"]`).forEach(s => s.remove());
+
+  const script = document.createElement('script');
+  script.src = SCRIPT_SRC;
+  script.defer = true;
+  document.body.appendChild(script);
+  this.limpiezas.push(() => script.remove());
+}
 
   heroNodeTransform(n: { x: number; y: number; z: number; transform: string }): string {
     if (this.heroAssembled()) return n.transform;
