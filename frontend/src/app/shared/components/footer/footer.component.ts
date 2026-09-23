@@ -15,7 +15,7 @@ import { RouterModule } from '@angular/router';
           <!-- Brand -->
           <div class="footer-brand">
             <a routerLink="/" class="brand">
-              <span class="brand-logo"><i class="fas fa-leaf" aria-hidden="true"></i></span>
+              <span class="brand-logo"><img src="assets/LogoNavbar.png" alt="MentorSync" class="footer-logo-img" /></span>
               <span class="brand-name">MentorSync<span class="accent">AI</span></span>
             </a>
             <p class="brand-desc">
@@ -133,10 +133,18 @@ import { RouterModule } from '@angular/router';
       display: grid;
       place-items: center;
       border-radius: 8px;
-      background: linear-gradient(135deg, rgba(0,237,100,0.12), rgba(34,211,238,0.12));
-      border: 1px solid rgba(0,237,100,0.18);
-      color: #00ED64;
-      font-size: 0.95rem;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--glass-border, rgba(255,255,255,0.08));
+      overflow: hidden;
+      padding: 3px;
+    }
+
+    .footer-logo-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 4px;
+      display: block;
     }
 
     .brand-name {
