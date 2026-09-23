@@ -10,25 +10,84 @@
 
 ---
 
-## [Sin iniciar] — Setup inicial
+## [2026-09-22] — Socket.io para reuniones en vivo (backend)
 
 **Hecho:**
-- Definida arquitectura general (MEAN + RAG con Groq + MongoDB Atlas Vector Search)
-- Definidos 3 roles: aprendiz, mentor, administrador
-- Definida estructura de carpetas backend y frontend
-- Definido sistema de diseño glassmorphism para frontend
+- Implementado `LiveSession` completo: `liveSession.repository.js` (`crear`, `buscarPorId`, `listarPorCurso`, `listarTodas`, `actualizar`, `agregarAsistente`), `liveSession.service.js` (`crearSesion` con verificación `cursoService.obtenerCursoPorId` + permiso mentor dueño o `administrador` bypass, `listarPorCurso`, `obtenerPorId`, `cambiarEstado` con `fechaInicioReal`/`fechaFin` automáticas, `unirse`), `liveSession.validator.js` (`esquemaCrearSesion`, `esquemaCambiarEstadoSesion`, `esquemaMensajeSala`), `liveSession.controller.js` (5 handlers + `listarMensajes` vía `chatMessageRepository.listarPorSesion`), `liveSession.routes.js` montado en `POST /api/sesiones`, `GET /api/sesiones/curso/:cursoId`, `GET /api/sesiones/:id`, `GET /api/sesiones/:id/mensajes`, `PATCH /api/sesiones/:id/estado`.
+- Extendida `chatMessage.repository.js` con `listarPorSesion(liveSessionId)`.
+- Socket.io: creado `backend/src/sockets/index.js` con `verificarTokenSocket` (lee `handshake.auth.token` o `Authorization: Bearer`), `configurarSockets(io)` que maneja `connection` → eventos `sala:unirse` (valida ObjectId, verifica `LiveSession` no cancelada, `socket.join(room)`, `agregarAsistente`, broadcast `sala:usuario_unido`), `sala:mensaje` (valida room membership, persiste `ChatMessage` con `courseId/liveSessionId/remitenteId/rolRemitente`, broadcast `sala:mensaje_nuevo` a `sesion:{id}`), `sala:escribiendo` (broadcast `sala:escribiendo`), `sala:abandonar` + `disconnect` (broadcast `sala:usuario_salio`, `mentor_desconectado` si `rol===mentor`, y `bot_activado` vía evento `bot_activado`).
+- `backend/src/server.js` ahora crea `httpServer = createServer(app)` + `io = new Server(httpServer, {cors:{origin:'*'}})` + `configurarSockets(io)` y monta `liveSessionRoutes` en `/api/sesiones`. `httpServer.listen` reemplaza `app.listen`.
+
+**Decisiones:**
+- Mantener ESM y `AppError` con `code` (ej. `FORBIDDEN`, `BAD_REQUEST`, `NOT_FOUND`) en sockets (callback `{success, message, code}`) y HTTP.
+- Room por `sesion:${liveSessionId}` (no por `courseId`) para aislar cada reunión; la sesión guarda `courseId` para mapear a curso y para persistencia de `ChatMessage`.
+- Auth de socket reutiliza `JWT_SECRET` y payload `{id, rol, email}` idéntico al HTTP; no se requiere nuevo middleware.
+- `liveSession.estado` enum `programada|en_curso|finalizada|cancelada` con transiciones gestionadas por `cambiarEstado`; `urlReunion` opcional para futuro WebRTC/Jitsi.
+
+**Pendiente:**
+- Swagger en `/api-docs`, deuda `inscribirCurso`/`verChunks` sigue pendiente (próximos pasos 3 y 4).
+
+---
+
+## [2026-09-22] — Sidebar Atlas + actualizacion de documentacion
+
+**Hecho:**
+- Revisión completa de los 7 `.MD` (README + 00-06) y actualización a estado real del repo (corrección de claims desactualizados).
+- Sidebar remodelada a estilo **MongoDB Atlas**: rail de iconos 56px siempre visible + panel explorer 280px glassmorphism con auto-hide hover (total 336px, 100vh), `ThemeService` + Vanta background intactos. Logos decorativos (`fa-atom`/`fa-server`/`fa-database`/`fa-brain`) visibles solo colapsado.
+- Fix Font Awesome: agregado CDN `6.5.2` en `frontend/src/index.html` (los `fas` no cargaban, rail aparecía vacío).
+- `COLLECCIONES / Cluster0` eliminado del explorer por petición (ahora solo header + nav filtrada).
+
+**Decisiones:**
+- Mantener ESM, Repository Pattern y filtro obligatorio `courseId` en RAG. Nuevo `sharp`/`validator` documentado.
+
+---
+
+## [2026-09-22] — Reaplicados 2 arreglos de §8 (AppError code + check-setup)
+
+**Hecho:**
+- Verificado `backend/src/utils/AppError.js`: ya tenía soporte `code` (constructor `message, statusCode=500, code=null` + `codigoPorDefecto(statusCode)`) y `middlewares/error.middleware.js` ya expone `{ error: { code, message } }` (code derivado del statusCode si no se pasa explícito). No requirió cambio — se confirmó que el arreglo previo sí persistió.
+- Corregido `backend/scripts/check-setup.js`: ahora valida 8 variables (`PORT`, `MONGODB_URI`, `JWT_SECRET`, `GROQ_API_KEY`, `GROQ_MODEL`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`) en vez de solo 4. Antes no validaba Cloudinary/GROQ_MODEL.
+
+**Decisiones:**
+- Mantener firma `AppError(message, statusCode, code)` con code opcional y fallback a mapa por statusCode (400→BAD_REQUEST, 401→UNAUTHORIZED, 403→FORBIDDEN, 404→NOT_FOUND, 409→CONFLICT, 422→UNPROCESSABLE, 500→INTERNAL_ERROR). Así los `throw new AppError(msg, status)` existentes siguen funcionando.
+- `check-setup` ahora falla explícitamente si falta Cloudinary (requerido para subida de PDFs) o `GROQ_MODEL` (requerido para RAG/estructura).
+
+---
+
+## [2026-09-20 → 2026-09-22] — Panel Admin + modulo usuarios + inscripciones + estructura IA (frontend + backend)
+
+**Hecho:**
+- **Backend admin (`/api/usuarios`):** `user.repository` (`listar` con filtros `$or` nombre/email, `contarPorRol` aggregate, `buscarPorId`, `actualizar`), `user.service` (`listarUsuarios`, `resumenRoles`, `crearUsuario` con hash, `cambiarRol`/`cambiarEstado` con anti auto-cambio), `user.controller` (5 handlers), `user.validator` (Zod v4 `esquemaCrearUsuario`/`esquemaCambiarRol`/`Estado`), `user.routes` (`router.use(verificarToken, verificarRol('administrador'))`). Montado en `server.js` como `/api/usuarios` (rutas: `GET /`, `GET /resumen`, `POST /`, `PATCH /:id/rol`, `PATCH /:id/estado`).
+- **Backend cursos:** `curso.model` extendido con `inscritos: [{id, nombre, correo, _id}]`, `contenidoTextoPlano`, `modulos[]` (`titulo, descripcion, orden, lecciones[] {titulo, contenido, puntosClave, orden}`), `estado` default `publicado`. Repository: `inscribirAprendiz ($addToSet)`, `cancelarInscripcion ($pull)`, `listarTodos` (`activo:true`). Service: `inscribirAprendiz`/`cancelarInscripcion` + `generarEstructuraCurso` (Groq `llama-3.3-70b-versatile`, `response_format:json_object`, parsea `modulos`, actualiza `bot.entrenado`). Controller: `inscribirCurso`/`cancelarInscripcion` (valida ObjectId, lee `Usuario`), `listarTodosAdmin`, `generarEstructura`, `crearCurso` con asignación `body.mentor` si `administrador`. Routes: `GET /admin/todos` (admin), `POST /:id/generar-estructura` (mentor), `POST /:id/inscribir` (auth), `DELETE /:id/inscritos/:inscritoId` (aprendiz) + bypass `administrador` en `verificarPropiedad`.
+- **Frontend admin:** `AdminService` (`listarUsuarios`, `resumenRoles`, `cambiarRol/Estado`, `crearUsuario`, `listarTodosCursos`, `crearCurso`, `cambiarEstadoCurso`, `eliminarCurso`), `AdminPageComponent` (carga `forkJoin` usuarios/resumen/cursos, KPIs `cursosPorEstado/totalInscripciones/usuariosActivos/crecimientoMensual`), `AdminDashboardQuickComponent` (doughnut roles, barras semanales, crecimiento, estado sistema), `admin.models.ts` (`UsuarioApi { _id, activo, rol minusculas, createdAt }`, `CursoApi { estado borrador|publicado|archivado, inscritos[] }`).
+- **Frontend shared:** `SidebarComponent` Atlas (previamente dock 72→260px, ahora rail 56 + panel 280 auto-hide), `ThemeService` (signals `mode` dark/light + `isCyberpunk`, `data-theme`/`theme-cyberpunk`, localStorage `mentorsync-mode`/`mentorsync-theme`), `VantaBackgroundComponent` wrapper de todas las rutas.
+- **Home remodelada:** hero SVG draw-line loop + spotlight/tilt/typewriter, marquee infinito, stats counters con `IntersectionObserver`, timeline con `timeline-fill` scrolleable, bento spotlight, CTA borde cónico, todo `prefers-reduced-motion` safe.
+- **Routing:** `VantaBackgroundComponent` como layout, `roleGuard` con `data.roles: ['Aprendiz','Mentor','Administrador']`, `AuthComponent` unificada (`/auth` + redirects `/login`/`/registro`), dependencias nuevas `animejs`, `gsap`, `three`, `vanta`, `sharp`.
+- **Bruno:** nueva carpeta `Admin/` con 11 casos (login admin, listar/resumen, cambiar rol/estado, errores sin permiso/auto-cambio, admin todos/crear).
+
+**Decisiones:**
+- Inscritos embebidos en `Curso` (no colección `enrollments` separada) para MVP.
+- Generación de estructura síncrona (25k chars max) — si crece, extraer a job.
+- Sidebar pantalla completa (100vh) overlay hover, no push layout; mobile dock inferior.
+
+**Verificación:** `npx tsc --noEmit -p tsconfig.app.json` limpio. Bruno Admin verificado.
+
+---
+
+## [Sin iniciar] — Setup inicial (actualizado 2026-09-22)
+
+**Hecho:**
+- Arquitectura MEAN + RAG con Groq + Atlas Vector Search definida
+- 3 roles definidos e implementados (RBAC backend + roleGuard frontend)
+- Cluster Atlas + índice `vector_index` (384D, cosine, filter `courseId`) configurados
+- Setup Express completo (middlewares, repositories, validators Zod v4)
+- Setup Angular 22 completo (standalone + SSR, glassmorphism, Vanta, GSAP)
+- Auth (registro/login JWT), pipeline chunking/embeddings, VectorSearch + Groq, chatbot end-to-end, módulo admin, panel admin con sidebar Atlas, inscripciones y generación de estructura
 
 **Pendiente / próximos pasos:**
-- [ ] Configurar cluster de MongoDB Atlas + índice de Vector Search
-- [x] Setup inicial de Express (esqueleto de carpetas, conexión DB)
-- [ ] Setup inicial de Angular (esqueleto de módulos por feature)
-- [x] Implementar auth (registro/login) con JWT y roles
-- [x] Pipeline de chunking y embeddings (PDF → texto → fragmentos → vectores 384D con `@xenova/transformers`)
-- [x] Búsqueda vectorial con MongoDB Atlas `$vectorSearch` + respuesta con LLM (Groq)
-- [x] Servicio RAG completo (`rag.service.js`) con integración Groq
-- [x] Chatbot funcional end-to-end (pregunta → retrieval → generación → guardado en historial)
-- [ ] Chat en vivo con Socket.io (mentor ↔ aprendiz)
-- [ ] UI base con componentes glass (`glass-card`, `glass-navbar`, etc.)
+- [ ] Sockets en vivo (`src/sockets/` vacío, Socket.io instalado)
+- [ ] Swagger UI montado en `/api-docs` (instalado, no montado)
+- [ ] Migrar inscripciones a `enrollments` si escala, y validaciones de `progreso`/Cloudinary en `check-setup.js`
 
 ---
 
@@ -61,21 +120,19 @@
 - **Colección Bruno API** completa con 4 casos de prueba de chat (nueva conversación, mismo hilo, historial, error curso no publicado).
 
 **Decisiones técnicas:**
-- **Strategy Pattern** (`IAssistantProvider`): permite cambiar de proveedor de IA (OpenAI, Anthropic, otro) sin tocar `rag.service.js` — solo hay que implementar `generarRespuesta()` en un nuevo provider.
-- **Temperatura baja (0.3)** por defecto: reduce alucinaciones, el bot se ciñe más al contexto.
+- **Strategy Pattern** (`IAssistantProvider`): permite cambiar de proveedor de IA sin tocar `rag.service.js`.
+- **Temperatura baja (0.3)** por defecto: reduce alucinaciones.
 - **Max tokens (1024)** por defecto: respuestas concisas.
-- **Contexto limitado a 5 chunks**: balance entre relevancia y costo de tokens. Con chunks de 1000 caracteres, son ~5000 caracteres de contexto (promedio ~1250 tokens).
-- **Filtro obligatorio por `courseId`** en `$vectorSearch`: cumple regla de `00_PROJECT_CONTEXT.md` — evita que un curso "vea" contenido de otro.
-- **`threadId` como UUID v4**: identificador único de conversación, no depende de base de datos (el cliente podría generar UUIDs también para reducir round-trips).
-- **Guardado de fragmentos usados**: permite debugging (qué contexto vio el modelo) y futura UI de "fuentes" (mostrar al usuario de dónde salió la respuesta).
+- **Contexto limitado a 5 chunks**: ~5000 chars (~1250 tokens).
+- **Filtro obligatorio por `courseId`** en `$vectorSearch`.
+- **`threadId` como UUID v4**: identificador único de conversación.
 
 **Verificación:**
 - Se probó manualmente con Bruno API: envío de pregunta nueva, continuación de conversación, obtención de historial, validación de que solo funciona con cursos publicados.
-- **Pendiente:** verificación end-to-end documentada con logs/screenshots del flujo completo.
 
 **Impacto:**
 - 🎉 **El núcleo de valor del producto está completo**: mentor sube PDF → bot entrenado → aprendiz pregunta → bot responde con contexto del curso.
-- Falta solo la capa de UI (frontend Angular) para tener un MVP funcional.
+- Frontend Angular ya implementado (antes pendiente).
 
 ---
 
@@ -85,11 +142,6 @@
 - Creado `auth.repository.js` con métodos `buscarPorEmail`, `buscarPorEmailConContraseña` (trae `contraseñaHash` con `select: false` + filtra `activo: true`), y `crear`.
 - Refactorizado `auth.service.js` para usar `authRepository` en vez de importar el modelo `Usuario` directamente.
 - El proyecto ahora cumple completamente el Repository Pattern en todos los módulos implementados (auth, course, document).
-
-**Impacto:**
-- ✅ Se resuelve uno de los puntos principales de deuda técnica documentado en la revisión del 2026-08-31.
-- Mejor testabilidad: los tests unitarios de `auth.service.js` ahora pueden mockear el repository sin depender de Mongoose.
-- Consistencia arquitectónica: todos los services siguen la misma convención de capas (`Controller → Service → Repository → Model`).
 
 ---
 
@@ -121,16 +173,12 @@
 - `@xenova/transformers` en vez de llamar a una API de embeddings (OpenAI, Cohere, etc.): **sin costo por request** y sin latencia de red. Tradeoff: CPU-bound (cada embedding toma ~50-200ms dependiendo del hardware del servidor).
 - Overlap de 200 caracteres entre chunks: evita que conceptos que aparecen en el límite entre dos fragmentos se "rompan" — el contexto se preserva parcialmente.
 
-**Verificación:**
-- Se probó manualmente la subida de un PDF de prueba con curl, verificando la respuesta con la vista previa (total de fragmentos, dimensiones, primer fragmento), y consultando la colección `knowledgechunks` en MongoDB para confirmar que los vectores se guardaron correctamente.
-- **Pendiente:** verificación end-to-end documentada (como la que se hizo para auth/cursos el 2026-08-31).
-
 **Deuda técnica nueva detectada:**
-- ✅ **Corregido** — `auth.repository.js` implementado. `auth.service.js` ahora usa el repository correctamente en vez de consultar el modelo directamente.
-- [ ] `check-setup.js` no valida las variables de Cloudinary (`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`) pero sí valida `GROQ_API_KEY` (que ya no aparece en `.env.example`).
-- [ ] `document.controller.verChunks` llama `knowledgeChunkRepository` directamente sin pasar por un service — rompe la convención de capas de `03_BACKEND_GUIDELINES.md`.
-- [ ] El modelo `Document` tiene `estado: 'error'` y `errorMessage`, pero si el procesamiento falla, el error se loguea en el servidor pero no se persiste correctamente en el documento (el documento queda en estado `pendiente` en vez de `error`). Falta un `try/catch` alrededor de todo el pipeline con `documentRepository.actualizarEstado(id, { estado: 'error', errorMessage: error.message })`.
-- [ ] Formato de respuesta inconsistente: `document.controller.js` usa `{ success, data, message }` (como `auth`), pero `course.controller.js` usa `{ exito, curso }`. Ver sección 11 de `06_API_MODELS_REFERENCE.md`.
+- ✅ **Corregido** — `auth.repository.js` implementado.
+- [ ] `check-setup.js` no valida las variables de Cloudinary (`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`) pero sí valida `GROQ_API_KEY`.
+- [ ] `document.controller.verChunks` llama `knowledgeChunkRepository` directamente sin pasar por un service — rompe la convención de capas.
+- [ ] Si el procesamiento falla, el documento queda en estado `pendiente` en vez de `error`.
+- [ ] Formato de respuesta ya unificado (antes inconsistente `exito` vs `success`).
 
 ---
 
@@ -138,38 +186,22 @@
 
 **Hecho:**
 - Revisión completa del código de backend existente (auth, cursos, middlewares, validators, modelos).
-- Se agregó desde el último checkpoint el módulo completo de **cursos** (CRUD con capa repository, service, controller, routes y validators) y middlewares nuevos (`error.middleware.js`, `validar.middleware.js`).
-- Creado `06_API_MODELS_REFERENCE.md`: referencia detallada método por método de cada modelo, repository, service, controller, middleware y validator del backend.
-- Actualizado `04_DATABASE_SCHEMA.md` para reflejar el esquema real implementado (nombres de campo en español, colecciones reales, campos que existen hoy como `bot.*`, `precio`, `activo`, etc. — la versión anterior describía un diseño que ya no coincidía con el código).
+- Creado `06_API_MODELS_REFERENCE.md`: referencia detallada método por método.
+- Actualizado `04_DATABASE_SCHEMA.md` para reflejar esquema real.
 
-**Bugs encontrados y corregidos** (verificados con pruebas manuales end-to-end contra el servidor local — registro, login, ruta protegida, CRUD de cursos, RBAC):
-- `course.service.js` importaba `AppError` como default export; solo existe como named export. Rompía la carga de `server.js` completo.
-- `course.routes.js` importaba `verificarToken`/`verificarRol`/`validar` como default exports; los tres son named exports. Mismo efecto.
-- 5 modelos (`enrollment`, `liveSession`, `chatMessage`, `document`, `knowledgeChunk`) usaban `require`/`module.exports` (CommonJS) en un proyecto `"type": "module"`. Convertidos a ESM.
-- Esos mismos modelos referenciaban `ref: 'User'`/`ref: 'Course'` en vez de `'Usuario'`/`'Curso'` (los nombres reales registrados en Mongoose) — rompía cualquier `.populate()` futuro sobre esos campos.
-- `validar.middleware.js` usaba `error.errors` (API de Zod v3); el proyecto tiene Zod v4, donde la propiedad es `error.issues`. Causaba un `500` en lugar de un `400` en cualquier validación fallida.
-- `course.validator.js` usaba `errorMap` (Zod v3) en vez de `error` (Zod v4) para el mensaje custom del enum de estado — no lanzaba error, pero el mensaje personalizado se ignoraba en silencio.
+**Bugs corregidos** (verificados con pruebas manuales):
+- `course.service.js` importaba `AppError` como default export; solo existe como named export.
+- `course.routes.js` importaba `verificarToken`/`verificarRol`/`validar` como default exports; son named exports.
+- 5 modelos usaban CommonJS en proyecto ESM. Convertidos.
+- Modelos referenciaban `ref: 'User'`/`'Course'` en vez de `'Usuario'`/`'Curso'`.
+- `validar.middleware.js` usaba `error.errors` (Zod v3); en v4 es `error.issues`.
+- `course.validator.js` usaba `errorMap` (Zod v3) en vez de `error` (Zod v4).
 
-**Deuda técnica registrada (no corregida en esta pasada, ver detalle en `06_API_MODELS_REFERENCE.md` sección 10):**
-- [ ] Falta `auth.repository.js` (el service consulta el modelo directamente).
-- [ ] Formato de respuesta inconsistente entre `auth.controller.js` (`{success, data, message}`) y `course.controller.js` (`{exito, curso}`).
+**Deuda registrada (ver detalle en `06_API_MODELS_REFERENCE.md` §11):**
+- [x] Falta `auth.repository.js` → corregido.
+- [x] Formato respuesta inconsistente → unificado a `{success, data, message}`.
+- [x] `verificarPropiedad` sin bypass `administrador` → corregido (ahora `verificarPropiedad(curso, mentorId, rol)`).
 - [ ] Sin bloques `@openapi` ni `swagger-ui-express` montado.
-- [ ] `enrollment`, `liveSession`, `chatMessage`, `document`, `knowledgeChunk` solo tienen el modelo, sin repository/service/controller/routes.
-- [ ] `verificarPropiedad` en `course.service.js` no da bypass al rol `administrador`.
+- [ ] `enrollment`/`liveSession` solo modelo, sin repository/service.
 
 ---
-
-<!-- Nueva entrada de ejemplo:
-
-## [2026-09-05] — Sprint 1: Auth y esqueleto backend
-
-**Hecho:**
-- ...
-
-**Decisiones:**
-- ...
-
-**Pendiente:**
-- ...
-
--->

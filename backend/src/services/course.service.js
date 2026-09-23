@@ -46,9 +46,13 @@ class CursoService {
     return cursoRepository.listarPorMentor(mentorId);
   }
 
-  async actualizarCurso(id, mentorId, cambios) {
+  async listarTodos() {
+    return cursoRepository.listarTodos();
+  }
+
+  async actualizarCurso(id, mentorId, cambios, rol) {
     const curso = await this.obtenerCursoPorId(id);
-    this.verificarPropiedad(curso, mentorId);
+    this.verificarPropiedad(curso, mentorId, rol);
     return cursoRepository.actualizar(id, cambios);
   }
 
@@ -61,21 +65,21 @@ class CursoService {
     return cursoRepository.actualizarImagen(id, imagenData.url);
   }
 
-  async cambiarEstado(id, mentorId, estado) {
+  async cambiarEstado(id, mentorId, estado, rol) {
     const curso = await this.obtenerCursoPorId(id);
-    this.verificarPropiedad(curso, mentorId);
+    this.verificarPropiedad(curso, mentorId, rol);
     return cursoRepository.actualizar(id, { estado });
   }
 
-  async eliminarCurso(id, mentorId) {
+  async eliminarCurso(id, mentorId, rol) {
     const curso = await this.obtenerCursoPorId(id);
-    this.verificarPropiedad(curso, mentorId);
+    this.verificarPropiedad(curso, mentorId, rol);
     return cursoRepository.eliminarLogico(id);
   }
 
-  async generarEstructuraCurso(id, mentorId) {
+  async generarEstructuraCurso(id, mentorId, rol) {
     const curso = await this.obtenerCursoPorId(id);
-    this.verificarPropiedad(curso, mentorId);
+    this.verificarPropiedad(curso, mentorId, rol);
 
     if (!curso.contenidoTextoPlano) {
       throw new AppError('El curso no tiene un PDF procesado previamente', 400);
@@ -129,8 +133,9 @@ class CursoService {
   }
 
   // Un mentor solo puede modificar sus propios cursos.
-  // El rol "administrador" se maneja aparte, vía verificarRol en la ruta.
-  verificarPropiedad(curso, mentorId) {
+  // El administrador tiene bypass total sobre cualquier curso.
+  verificarPropiedad(curso, mentorId, rol) {
+    if (rol === 'administrador') return;
     const idDelMentor = curso.mentor._id ? curso.mentor._id.toString() : curso.mentor.toString();
     if (idDelMentor !== mentorId.toString()) {
       throw new AppError('No tienes permiso sobre este curso', 403);

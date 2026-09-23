@@ -6,12 +6,17 @@ import compression from 'compression';
 import mongoSanitize from 'express-mongo-sanitize';
 import rateLimit from 'express-rate-limit';
 import pinoHttp from 'pino-http';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 import authRoutes from './routes/auth.routes.js';
 import cursoRoutes from './routes/course.routes.js';
+import usuarioRoutes from './routes/user.routes.js';
 import documentRoutes from './routes/document.routes.js';
+import liveSessionRoutes from './routes/liveSession.routes.js';
 import { manejarErrores } from './middlewares/error.middleware.js';
 import { conectarBaseDatos } from './config/database.js';
 import chatRoutes from './routes/chat.routes.js';
+import { configurarSockets } from './sockets/index.js';
 
 const app = express();
 
@@ -31,17 +36,28 @@ app.use(
 
 // Rutas
 app.use('/api/auth', authRoutes);
+app.use('/api/usuarios', usuarioRoutes);
+app.use('/api/sesiones', liveSessionRoutes);
 app.use('/api/cursos', cursoRoutes);
 app.use('/api/cursos', documentRoutes);
 app.use('/api/cursos', chatRoutes);
 
-// TODO: inicializar Socket.io (ver src/sockets)
 // TODO: montar swagger-ui-express en /api-docs (ver docs/03_BACKEND_GUIDELINES.md)
 
 // El middleware de errores SIEMPRE va al final, después de todas las rutas
 app.use(manejarErrores);
 
-const PORT = process.env.PORT || 4000;
+const PORT =  process.env.PORT || 4000;
+
+// Servidor HTTP + Socket.io
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
+  },
+});
+configurarSockets(io);
 
 /**
  * Arranca el servidor SOLO después de conectar a MongoDB — así ninguna
@@ -51,7 +67,7 @@ const PORT = process.env.PORT || 4000;
 async function iniciarServidor() {
   try {
     await conectarBaseDatos();
-    app.listen(PORT, () => console.log(`🚀 MentorSync AI backend corriendo en puerto ${PORT}`));
+    httpServer.listen(PORT, () => console.log(`🚀 MentorSync AI backend corriendo en puerto ${PORT} (HTTP + Socket.io)`));
   } catch (error) {
     console.error('❌ No se pudo iniciar el servidor:', error.message);
     process.exit(1);
@@ -61,3 +77,4 @@ async function iniciarServidor() {
 iniciarServidor();
 
 export default app;
+export { io, httpServer };

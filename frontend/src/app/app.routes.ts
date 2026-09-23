@@ -1,16 +1,14 @@
 import { Routes } from '@angular/router';
-import { ResponsiveLayoutComponent } from './layouts/responsive-layout/responsive-layout.component';
-import { LoginPageComponent } from './features/auth/pages/loginPage';
-import { RegistroPageComponent } from './features/auth/pages/registroPage';
-import { AprendizPageComponent } from './features/Aprendiz/aprendiz-page.component';
-import { MentorPageComponent } from './features/mentor/mentorPage';
-import { AdminPageComponent } from './features/admin-panel/adminPage';
-import { roleGuard } from './core/guards/role.guard';
-import { HomePage } from './features/home/pages/home-page/home-page.component';
-import { NavbarComponent } from '../app/layouts/navbar//navbar.component';
-import { CursosPageComponent } from './pages/cursos/cursos-page.component';
+import { PagoResultadoComponent } from './features/pagos/pago-resultado/pago-resultado.component'; 
+import { HomePage } from './features/home/home-page.component';
+import { CursosPageComponent } from './features/courses/cursos-page.component';
 import { VantaBackgroundComponent } from './shared/components/vanta-background/vanta-background.component';
-import { PagoResultadoComponent } from './features/pagos/pago-resultado/pago-resultado.component'; // 👈 nuevo
+import { AprendizPageComponent } from './features/learner-dashboard/aprendiz-page.component';
+import { MentorPageComponent } from './features/mentor-dashboard/mentor-dashboard.component';
+import { AdminPageComponent } from './features/admin-panel/admin-panel.component';
+import { roleGuard } from './core/guards/role.guard';
+import { AuthComponent } from './features/auth/auth.component';
+import { LiveSessionComponent } from './features/live-session/live-session.component';
 
 export const routes: Routes = [
   {
@@ -18,8 +16,12 @@ export const routes: Routes = [
     component: VantaBackgroundComponent,
     children: [
       { path: '', component: HomePage },
-      { path: 'login', component: LoginPageComponent },
-      { path: 'registro', component: RegistroPageComponent },
+      { path: 'auth', component: AuthComponent },
+      
+      // Redirecciones directas hacia la nueva vista unificada
+      { path: 'login', redirectTo: 'auth', pathMatch: 'full' },
+      { path: 'registro', redirectTo: 'auth', pathMatch: 'full' },
+
       { path: 'cursos', component: CursosPageComponent },
 
       // 👇 nuevo
@@ -47,6 +49,18 @@ export const routes: Routes = [
         component: AdminPageComponent,
         canActivate: [roleGuard],
         data: { roles: ['Administrador'] }
+      },
+      {
+        path: 'sesion/:id',
+        component: LiveSessionComponent,
+        canActivate: [roleGuard],
+        data: { roles: ['Aprendiz', 'Mentor', 'Administrador'] }
+      },
+      {
+        path: 'unirse',
+        component: LiveSessionComponent,
+        canActivate: [roleGuard],
+        data: { roles: ['Aprendiz', 'Mentor', 'Administrador'] }
       }
     ]
   }

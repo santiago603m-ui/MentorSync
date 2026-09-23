@@ -12,6 +12,10 @@ export const esquemaCrearCurso = z.object({
     .min(10, 'La descripción debe tener al menos 10 caracteres')
     .max(2000, 'La descripción no puede superar 2000 caracteres'),
   categoria: z.string().trim().min(2).max(60),
+  mentor: z
+    .string()
+    .regex(/^[0-9a-fA-F]{24}$/, 'ID de mentor inválido')
+    .optional(),
   precio: z.number().nonnegative('El precio no puede ser negativo').optional(),
   duracionEstimadaHoras: z
     .number()

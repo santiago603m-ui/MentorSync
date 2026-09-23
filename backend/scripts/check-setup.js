@@ -2,7 +2,16 @@
 // Uso: npm run check-setup
 import 'dotenv/config';
 
-const requeridas = ['PORT', 'MONGODB_URI', 'JWT_SECRET', 'GROQ_API_KEY'];
+const requeridas = [
+  'PORT',
+  'MONGODB_URI',
+  'JWT_SECRET',
+  'GROQ_API_KEY',
+  'GROQ_MODEL',
+  'CLOUDINARY_CLOUD_NAME',
+  'CLOUDINARY_API_KEY',
+  'CLOUDINARY_API_SECRET',
+];
 const faltantes = requeridas.filter((v) => !process.env[v]);
 
 if (faltantes.length) {

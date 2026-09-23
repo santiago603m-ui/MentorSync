@@ -1,0 +1,33 @@
+meta {
+  name: 11 - Crear usuario
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/usuarios
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "nombre": "Nuevo Admin",
+    "email": "nuevo.admin@mentorsync.ai",
+    "contraseña": "admin12345",
+    "rol": "administrador"
+  }
+}
+
+docs {
+  Crea un usuario con cualquier rol, incluido administrador.
+  Solo accesible con token de administrador.
+  Es la única vía para crear admins: el registro público
+  (/api/auth/registro) ya no acepta el rol administrador.
+  Cambia el email en cada prueba o recibirás 409 EMAIL_DUPLICADO.
+}

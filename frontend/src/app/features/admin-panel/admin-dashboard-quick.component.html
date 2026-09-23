@@ -1,0 +1,98 @@
+<div class="dashboard-inner-container">
+  <!-- KPIs globales (datos reales del backend) -->
+  <div class="quick-stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon bg-cyan"><i class="fas fa-users"></i></div>
+      <div class="stat-details">
+        <span class="stat-value">{{ totalUsuarios }}</span>
+        <span class="stat-label">Usuarios Totales</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon bg-purple"><i class="fas fa-chalkboard-teacher"></i></div>
+      <div class="stat-details">
+        <span class="stat-value">{{ resumen?.mentor ?? 0 }}</span>
+        <span class="stat-label">Mentores</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon bg-pink"><i class="fas fa-user-graduate"></i></div>
+      <div class="stat-details">
+        <span class="stat-value">{{ resumen?.aprendiz ?? 0 }}</span>
+        <span class="stat-label">Aprendices</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon bg-amber"><i class="fas fa-book-open"></i></div>
+      <div class="stat-details">
+        <span class="stat-value">{{ cursos.total }}</span>
+        <span class="stat-label">Cursos Totales</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="charts-grid">
+    <!-- Donut por rol -->
+    <div class="chart-card">
+      <h3><i class="fas fa-chart-pie"></i> Usuarios por Rol</h3>
+      <div class="donut-wrap">
+        <div class="donut" [style.background]="donutGradient"></div>
+        <div class="donut-center"><strong>{{ totalUsuarios }}</strong><span>usuarios</span></div>
+      </div>
+      <div class="legend">
+        <div><i class="dot" style="background:#06b6d4"></i> Aprendices ({{ pctAprendices }}%)</div>
+        <div><i class="dot" style="background:#a855f7"></i> Mentores ({{ pctMentores }}%)</div>
+        <div><i class="dot" style="background:#ec4899"></i> Administradores ({{ pctAdmins }}%)</div>
+      </div>
+    </div>
+
+    <!-- Cursos por estado -->
+    <div class="chart-card">
+      <h3><i class="fas fa-chart-bar"></i> Cursos por Estado <small>{{ totalInscripciones }} inscripciones</small></h3>
+      <div class="bars">
+        <div class="bar-col">
+          <div class="bar-track"><div class="bar-fill" [style.height.%]="pctPublicados"></div></div>
+          <span class="bar-day">Pub</span>
+          <span class="bar-val">{{ cursos.publicado }}</span>
+        </div>
+        <div class="bar-col">
+          <div class="bar-track"><div class="bar-fill bar-violet" [style.height.%]="cursos.total ? (cursos.borrador / cursos.total * 100) : 0"></div></div>
+          <span class="bar-day">Bor</span>
+          <span class="bar-val">{{ cursos.borrador }}</span>
+        </div>
+        <div class="bar-col">
+          <div class="bar-track"><div class="bar-fill bar-gray" [style.height.%]="cursos.total ? (cursos.archivado / cursos.total * 100) : 0"></div></div>
+          <span class="bar-day">Arc</span>
+          <span class="bar-val">{{ cursos.archivado }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <h3><i class="fas fa-chart-line"></i> Registro de Usuarios</h3>
+      <div class="growth">
+        @for (m of crecimiento; track m.mes) {
+          <div class="growth-row">
+            <span class="g-mes">{{ m.mes }}</span>
+            <div class="progress-bar-bg"><div class="progress-bar-fill" [style.width.%]="m.porcentaje"></div></div>
+            <span class="g-val">+{{ m.usuarios }}</span>
+          </div>
+        } @empty {
+          <p class="empty-hint">Sin datos de registro todavía.</p>
+        }
+      </div>
+    </div>
+
+    <div class="chart-card highlight">
+      <h3><i class="fas fa-exclamation-triangle"></i> Estado del Sistema</h3>
+      <div class="sys-row"><span>Usuarios activos</span><strong class="ok">{{ pctActivos }}%</strong></div>
+      <div class="sys-row"><span>Cursos publicados</span><strong class="ok">{{ pctPublicados }}%</strong></div>
+      <div class="sys-row"><span>Total inscripciones</span><strong class="warn">{{ totalInscripciones }}</strong></div>
+    </div>
+  </div>
+</div>

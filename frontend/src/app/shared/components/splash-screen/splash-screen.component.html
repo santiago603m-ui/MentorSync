@@ -1,0 +1,20 @@
+@if (visible()) {
+  <div class="splash" [class.fade]="fading()" [class.explode]="exploding()">
+    <div class="splash-inner">
+      <div class="splash-logo">
+        @for (edge of edges; track $index) {
+          <div class="edge" [style.width.px]="edge.width" [style.transform]="edge.transform"></div>
+        }
+        @for (node of nodes; track $index) {
+          <div class="node" [style.transform]="exploding() ? 'translate3d(' + (node.x * 3.5) + 'px,' + (node.y * 3.5) + 'px,' + (node.z * 3.5) + 'px)' : node.transform" [style.opacity]="exploding() ? '0' : '1'"></div>
+        }
+        <div class="core"><span>M</span></div>
+      </div>
+
+      <p class="tag">Plataforma de</p>
+      <h1 class="name">Mentor<b>Sync</b> AI</h1>
+      <div class="line"></div>
+      <p class="loading">Cargando tu espacio de aprendizaje…</p>
+    </div>
+  </div>
+}

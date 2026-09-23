@@ -24,7 +24,9 @@ export const esquemaRegistro = z.object({
     .min(8, 'La contraseña debe tener al menos 8 caracteres')
     .max(72, 'La contraseña es demasiado larga'), // bcrypt trunca a 72 bytes
 
-  rol: z.enum(['aprendiz', 'mentor', 'administrador']).optional(),
+  // El rol administrador NO se puede auto-asignar en el registro público:
+  // los administradores los crea otro administrador vía POST /api/usuarios.
+  rol: z.enum(['aprendiz', 'mentor']).optional(),
 
   perfilMentor: z
     .object({

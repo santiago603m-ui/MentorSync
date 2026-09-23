@@ -173,3 +173,79 @@ body.theme-cyberpunk :focus-visible {
     scroll-behavior: auto !important;
   }
 }
+
+/* =====================================================================
+   Glassmorphism + modo claro/oscuro.
+   --glass-* vive aquí (hoja viva del build). El modo se activa con
+   data-theme="light" en <html> vía ThemeService. Por defecto: dark.
+   ===================================================================== */
+:root {
+  color-scheme: dark;
+
+  --glass-bg: rgba(255, 255, 255, 0.07);
+  --glass-bg-strong: rgba(255, 255, 255, 0.13);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-blur: blur(18px);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  --glass-input: rgba(5, 5, 14, 0.55);
+
+  --bg-gradient: radial-gradient(circle at top left, #1B1035, #0B0715 70%);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-base: #EDF1F7;
+  --bg-base-elevated: #E2E8F1;
+  --surface-1: #FFFFFF;
+  --surface-2: #F1F4F9;
+  --surface-2-hover: #E4EAF3;
+  --surface-3: #D7DFEA;
+
+  --border-subtle: #D3DBE7;
+  --border-strong: #A9B6CB;
+
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #8491A8;
+
+  --glass-bg: rgba(255, 255, 255, 0.62);
+  --glass-bg-strong: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(15, 23, 42, 0.12);
+  --glass-shadow: 0 8px 32px rgba(15, 23, 42, 0.12);
+  --glass-input: rgba(255, 255, 255, 0.75);
+
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.08), 0 8px 24px rgba(15, 23, 42, 0.1);
+  --shadow-pop: 0 12px 40px rgba(15, 23, 42, 0.18);
+
+  --bg-gradient: radial-gradient(circle at top left, #DCE7F7, #EDF1F7 70%);
+}
+
+/* Utilidades glass reutilizables */
+.glass-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+  color: var(--text-primary);
+}
+
+.glass-panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-input {
+  background: var(--glass-input);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  color: var(--text-primary);
+}

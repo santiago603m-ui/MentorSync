@@ -35,6 +35,48 @@ export class CursoService {
       );
   }
 
+  obtenerMisCursos(): Observable<Curso[]> {
+    return this.http
+      .get<{ data: { cursos: Curso[] } }>(`${this.apiUrl}/mis-cursos`)
+      .pipe(map(r => r.data.cursos));
+  }
+
+  crearCurso(dto: { titulo: string; descripcion: string; categoria: string; precio?: number }): Observable<Curso> {
+    return this.http
+      .post<{ success: boolean; data: { curso: Curso } }>(this.apiUrl, dto)
+      .pipe(map(r => r.data.curso));
+  }
+
+  actualizarCurso(id: string, cambios: Partial<Curso>): Observable<Curso> {
+    return this.http
+      .patch<{ success: boolean; data: { curso: Curso } }>(`${this.apiUrl}/${id}`, cambios)
+      .pipe(map(r => r.data.curso));
+  }
+
+  cambiarEstadoCurso(id: string, estado: string): Observable<Curso> {
+    return this.http
+      .patch<{ success: boolean; data: { curso: Curso } }>(`${this.apiUrl}/${id}/estado`, { estado })
+      .pipe(map(r => r.data.curso));
+  }
+
+  eliminarCurso(id: string): Observable<void> {
+    return this.http.delete<{ success: boolean; data: null }>(`${this.apiUrl}/${id}`).pipe(map(() => undefined));
+  }
+
+  subirDocumento(cursoId: string, archivo: File): Observable<{ documento: any; vistaPrevia: any }> {
+    const fd = new FormData();
+    fd.append('archivo', archivo);
+    return this.http
+      .post<{ success: boolean; data: { documento: any; vistaPrevia: any } }>(`${this.apiUrl}/${cursoId}/documentos`, fd)
+      .pipe(map(r => r.data));
+  }
+
+  listarDocumentos(cursoId: string): Observable<any[]> {
+    return this.http
+      .get<{ success: boolean; data: { documentos: any[] } }>(`${this.apiUrl}/${cursoId}/documentos`)
+      .pipe(map(r => r.data.documentos));
+  }
+
   obtenerCursoPorId(id: string): Observable<Curso> {
     return this.http.get<Curso>(`${this.apiUrl}/${id}`);
   }

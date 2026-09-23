@@ -38,6 +38,7 @@
     "pdf-parse": "^1.1.1",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
+    "sharp": "^0.35.4",
     "socket.io": "^4.8.3",
     "streamifier": "^0.1.1",
     "swagger-jsdoc": "^6.3.0",
@@ -53,5 +54,9 @@
   },
   "engines": {
     "node": ">=24.20.0"
+  },
+  "allowScripts": {
+    "sharp@0.32.6": true,
+    "sharp@0.35.4": true
   }
 }

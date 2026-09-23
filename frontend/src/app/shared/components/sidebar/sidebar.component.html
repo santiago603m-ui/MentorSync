@@ -1,0 +1,96 @@
+<div class="atlas-sidebar" aria-label="Navegación del panel">
+  <!-- Rail izquierdo angosto - siempre visible, solo iconos -->
+  <div class="icon-rail">
+    <div class="rail-logo" aria-hidden="true" title="MentorSync AI">
+      <img src="assets/LogoNavbar.png" alt="MentorSync" class="rail-logo-img" />
+    </div>
+
+    <!-- Colapsado: solo iconos de sección (Formación, Comunidad) -->
+    @for (section of railSections; track section.key) {
+      <button
+        type="button"
+        class="rail-btn"
+        [class.active]="isSectionActive(section)"
+        (click)="elegirSeccion(section)"
+        [title]="section.label"
+      >
+        <i [class]="section.icon" aria-hidden="true"></i>
+      </button>
+    }
+    <!-- Fallback: si no hay secciones etiquetadas, muestra items planos -->
+    @for (item of railItems; track item.key) {
+      <button
+        type="button"
+        class="rail-btn"
+        [class.active]="active() === item.key"
+        (click)="elegir(item.key)"
+        [title]="item.label"
+      >
+        <i [class]="item.icon" aria-hidden="true"></i>
+      </button>
+    }
+
+    <div class="rail-spacer"></div>
+
+    <button type="button" class="rail-btn rail-bottom" title="Configuración">
+      <i class="fas fa-cog" aria-hidden="true"></i>
+    </button>
+  </div>
+
+  <!-- Panel explorer - se revela al hover -->
+  <div class="explorer-panel">
+    <div class="explorer-header">
+      <span class="brand-title">{{ title() }}</span>
+      <button type="button" class="header-gear" title="Configuración">
+        <i class="fas fa-cog" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- Project Overview equivalente para MentorSync -->
+    <div class="overview-row">
+      <button type="button" class="overview-btn" [class.active]="active() === 'dashboard'" (click)="elegir('dashboard')">
+        <i class="fas fa-chart-pie" aria-hidden="true"></i>
+        <span>Vista general</span>
+      </button>
+    </div>
+
+    @for (section of effectiveSections; track section.key) {
+      <!-- Si la sección es la que contiene dashboard, la saltamos (ya está arriba como overview) -->
+      @if (section.key !== 'panel') {
+        <div class="section-block">
+          <button type="button" class="section-header" (click)="toggleSection(section.key)">
+            <span class="section-left">
+              <i [class]="section.icon" aria-hidden="true"></i>
+              <span class="section-label">{{ section.label }}</span>
+            </span>
+            <i class="fas fa-chevron-up section-caret" [class.collapsed]="!isExpanded(section.key)" aria-hidden="true"></i>
+          </button>
+
+          @if (isExpanded(section.key)) {
+            <nav class="section-items">
+              @for (item of section.items; track item.key) {
+                <!-- Evitar duplicar dashboard que ya está en overview -->
+                @if (item.key !== 'dashboard') {
+                  <button
+                    type="button"
+                    class="explorer-nav-item"
+                    [class.active]="active() === item.key"
+                    (click)="elegir(item.key)"
+                  >
+                    <i [class]="item.icon" aria-hidden="true"></i>
+                    <span>{{ item.label }}</span>
+                  </button>
+                }
+              }
+            </nav>
+          }
+        </div>
+      }
+    }
+
+    <div class="explorer-footer">
+      <span>Estado: <strong class="status-good">Operativo</strong></span>
+      <span class="footer-copy">©2026 MentorSync</span>
+    </div>
+  </div>
+</div>

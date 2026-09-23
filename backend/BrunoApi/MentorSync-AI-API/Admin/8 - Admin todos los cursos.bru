@@ -1,0 +1,25 @@
+meta {
+  name: 8 - Admin todos los cursos
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/cursos/admin/todos
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+vars:post-response {
+  courseId: res.body.data.cursos[0]._id
+}
+
+docs {
+  Lista TODOS los cursos en cualquier estado (borrador, publicado,
+  archivado), a diferencia del listado público que solo trae publicados.
+  Guarda el _id del primer curso en courseId para los requests 9 y 10.
+}
