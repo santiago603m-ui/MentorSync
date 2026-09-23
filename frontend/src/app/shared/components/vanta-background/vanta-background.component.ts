@@ -27,7 +27,8 @@ const COLOR_POR_MODO = { dark: 0x1b1035, light: 0x8fb4dd } as const;
   imports: [CommonModule, RouterOutlet, NavbarComponent, FooterComponent],
   template: `
     <div #vantaRef class="vanta-bg" [class.hidden]="solidBg()" [class.is-ready]="vistaLista"></div>
-    <div class="vanta-content" [class.solid-bg]="solidBg()">
+    <canvas #dotCanvas class="dot-bg" [class.visible]="solidBg()"></canvas>
+    <div class="vanta-content">
       <app-navbar></app-navbar>
       <main class="page-container">
         <router-outlet></router-outlet>
@@ -54,15 +55,27 @@ const COLOR_POR_MODO = { dark: 0x1b1035, light: 0x8fb4dd } as const;
       visibility: hidden;
       pointer-events: none;
     }
+    .dot-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+      pointer-events: none;
+      background: #0B1020;
+    }
+    .dot-bg.visible {
+      opacity: 1;
+    }
     .vanta-content {
       position: relative;
       z-index: 1;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-    }
-    .vanta-content.solid-bg {
-      background: #0B1020;
     }
     .page-container {
       flex: 1;
@@ -76,6 +89,7 @@ const COLOR_POR_MODO = { dark: 0x1b1035, light: 0x8fb4dd } as const;
 })
 export class VantaBackgroundComponent implements AfterViewInit, OnDestroy, OnInit {
   @ViewChild('vantaRef', { static: true }) vantaRef!: ElementRef<HTMLDivElement>;
+  @ViewChild('dotCanvas') dotCanvas!: ElementRef<HTMLCanvasElement>;
 
   private platformId = inject(PLATFORM_ID);
   private theme = inject(ThemeService);
@@ -122,6 +136,7 @@ export class VantaBackgroundComponent implements AfterViewInit, OnDestroy, OnIni
     this.vistaLista = true;
     this.crearEfecto();
     requestAnimationFrame(() => this.vantaRef.nativeElement.classList.add('is-ready'));
+    this.iniciarDotGrid();
   }
 
   ngOnDestroy(): void {
@@ -156,5 +171,82 @@ export class VantaBackgroundComponent implements AfterViewInit, OnDestroy, OnIni
     this.efectoVanta = null;
     if (this.solidBg()) return;
     this.crearEfecto();
+  }
+
+  private iniciarDotGrid(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const canvas = this.dotCanvas?.nativeElement;
+    if (!canvas) {
+      // Reintenta si el ViewChild aún no está disponible
+      setTimeout(() => this.iniciarDotGrid(), 100);
+      return;
+    }
+    const ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctx) return;
+
+    const bg = '#0B1020';
+    const c1 = { r: 0x38, g: 0xbd, b: 0xf8 };
+    const c2 = { r: 0x81, g: 0x8c, b: 0xf8 };
+    let raf = 0;
+    let t = 0;
+    let mouseX = 0.5, mouseY = 0.5, targetX = 0.5, targetY = 0.5;
+
+    const onMove = (e: MouseEvent) => {
+      targetX = e.clientX / window.innerWidth;
+      targetY = e.clientY / window.innerHeight;
+    };
+    window.addEventListener('mousemove', onMove);
+
+    const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
+    const resize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.8);
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const draw = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      mouseX = lerp(mouseX, targetX, 0.06);
+      mouseY = lerp(mouseY, targetY, 0.06);
+      t += 0.016 * 0.5;
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, w, h);
+
+      const spacing = 22;
+      const dotBase = spacing * 0.35;
+      const waveScale = 1.2;
+      const cols = Math.ceil(w / spacing) + 2;
+      const rows = Math.ceil(h / spacing) + 2;
+
+      for (let y = -1; y < rows; y++) {
+        for (let x = -1; x < cols; x++) {
+          const px = x * spacing + (y % 2 ? spacing / 2 : 0);
+          const py = y * spacing;
+          const wave = Math.sin((px * 0.012 + py * 0.012) * waveScale - t * 2.2) * 0.5 + 0.5;
+          const distMouse = Math.hypot((px / w) - mouseX, (py / h) - mouseY);
+          const mouseInfluence = Math.max(0, 1 - distMouse * 2.2) * 0.22;
+          const k = Math.min(1, Math.max(0, wave + mouseInfluence));
+          const r = dotBase * (0.45 + k * 0.55);
+          const a = 0.10 + k * 0.38;
+          const rr = Math.round(lerp(c2.r, c1.r, k));
+          const gg = Math.round(lerp(c2.g, c1.g, k));
+          const bb = Math.round(lerp(c2.b, c1.b, k));
+          ctx.beginPath();
+          ctx.arc(px, py, r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${rr},${gg},${bb},${a})`;
+          ctx.fill();
+        }
+      }
+      raf = requestAnimationFrame(draw);
+    };
+    draw();
   }
 }
