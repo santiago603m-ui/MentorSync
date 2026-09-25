@@ -9,7 +9,7 @@ type Vista = 'verificando' | 'aprobado' | 'pendiente' | 'rechazado' | 'error';
 
 /**
  * Página a la que PayU devuelve al aprendiz (responseUrl = /pago/resultado?ref=<referencia>).
- * OJO: a diferencia de Wompi, aquí NO le preguntamos a la pasarela — PayU advierte que su
+ * OJO: aquí NO le preguntamos directamente a PayU — su respuesta de navegador no es confiable.
  * página de respuesta no es confiable. Consultamos el estado que YA tenemos guardado,
  * actualizado por la confirmación (webhook) que llega server-to-server.
  * Si el pago sigue PENDIENTE, reintenta cada 3 s durante ~1 minuto.

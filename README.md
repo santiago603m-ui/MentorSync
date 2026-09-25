@@ -23,6 +23,7 @@ Plataforma web de mentoría híbrida con asistente de IA por curso (RAG).
 **Frontend:** Angular 22 (standalone, signal-first) + glassmorphism + Vanta.js + GSAP/anime.js  
 **IA/RAG:** ✅ Groq API (Llama 3.3 70B) + ✅ @xenova/transformers (`all-MiniLM-L6-v2`, 384D, local) + ✅ MongoDB Atlas Vector Search  
 **Storage:** Cloudinary (PDFs, `resource_type: 'raw'`) + sharp (imágenes)  
+**Pagos:** ✅ PayU Latam Colombia Web Checkout + webhook MD5 + inscripción idempotente
 **Realtime:** ✅ Socket.io para reuniones en vivo (`sockets/index.js`, `liveSession` + `ChatMessage.liveSessionId`, rooms `sesion:{id}`) + chat bot HTTP  
 **Seguridad:** helmet, cors, compression, express-mongo-sanitize, express-rate-limit, validator, pino
 
@@ -31,7 +32,8 @@ Plataforma web de mentoría híbrida con asistente de IA por curso (RAG).
 ### ✅ Implementado
 - Auth completa (registro, login, JWT, RBAC por rol: `aprendiz`/`mentor`/`administrador`, guards e interceptores en frontend)
 - CRUD de cursos con soft delete, control de propiedad y **bypass de administrador** (`verificarPropiedad(curso, mentorId, rol)`)
-- Inscripciones embebidas en el modelo `Curso` (`inscritos: [{ id, nombre, correo }]`) — endpoints `POST /api/cursos/:id/inscribir` y `DELETE /api/cursos/:id/inscritos/:inscritoId`
+- Inscripciones embebidas en el modelo `Curso` (`inscritos: [{ id, nombre, correo }]`) — cursos gratuitos por endpoint directo y cursos pagos mediante PayU, con webhook firmado e inscripción idempotente
+- **Pagos PayU Colombia:** checkout Web Checkout, formulario firmado, confirmación server-to-server, validación de monto/moneda, estados de retorno y bloqueo de inscripción directa para cursos de pago
 - Generación de estructura tipo Platzi vía Groq (`POST /api/cursos/:id/generar-estructura`) → `modulos[] > lecciones[]` + `contenidoTextoPlano`
 - Módulo admin completo: `GET /api/usuarios`, `GET /api/usuarios/resumen`, `POST /api/usuarios`, `PATCH /api/usuarios/:id/rol`, `PATCH /api/usuarios/:id/estado` (solo `administrador`, con validación de no auto-cambio de rol/estado) + `GET /api/cursos/admin/todos`
 - Pipeline de chunking y embeddings: subida de PDF → extracción con `pdf-parse` → fragmentación (1000 chars, overlap 200) → embeddings 384D con `Xenova/all-MiniLM-L6-v2` → guardado en `knowledgechunks` (batch) → documento `completado` con URL Cloudinary
@@ -113,6 +115,13 @@ cp .env.example .env
 #   CLOUDINARY_API_SECRET=
 #   GROQ_API_KEY=
 #   GROQ_MODEL=llama-3.3-70b-versatile
+#   BACKEND_URL=http://localhost:4000
+#   FRONTEND_URL=http://localhost:4200
+#   PAYU_ENV=test
+#   PAYU_API_KEY=
+#   PAYU_MERCHANT_ID=
+#   PAYU_ACCOUNT_ID=
+#   PAYU_CONFIRMATION_URL=
 
 # Verificar configuración
 npm run check-setup
@@ -122,7 +131,7 @@ npm run dev
 # → http://localhost:4000
 ```
 
-> `scripts/check-setup.js` valida `PORT`, `MONGODB_URI`, `JWT_SECRET`, `GROQ_API_KEY`, `GROQ_MODEL`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (8 vars).
+> `scripts/check-setup.js` valida 13 variables, incluyendo las tres credenciales de PayU y las URLs pública del backend/frontend. Consulta `backend/.env.example`.
 
 ### Frontend
 
@@ -154,7 +163,10 @@ Ver [`06_API_MODELS_REFERENCE.md`](06_API_MODELS_REFERENCE.md) sección 9 para l
 - `POST /api/cursos` — Crear curso (mentor o administrador con `body.mentor` para asignar)
 - `GET /api/cursos/:id` — Ver curso (público)
 - `PATCH /api/cursos/:id` / `PATCH /api/cursos/:id/estado` / `DELETE /api/cursos/:id` — Actualizar/cambiar estado/borrar (dueño o administrador)
-- `POST /api/cursos/:id/inscribir` — Inscribir aprendiz autenticado (`inscritos[]` embebido)
+- `POST /api/cursos/:id/inscribir` — Inscribir aprendiz autenticado en curso **gratuito** (`inscritos[]` embebido); devuelve 402 si el curso es de pago
+- `POST /api/pagos/checkout` — Crear intento PayU y obtener los campos firmados del Web Checkout (aprendiz)
+- `GET /api/pagos/estado/:referencia` — Consultar el resultado persistido por el webhook (solo el aprendiz dueño)
+- `POST /api/pagos/confirmacion` — Webhook público de PayU, protegido por merchant + firma MD5
 - `DELETE /api/cursos/:id/inscritos/:inscritoId` — Cancelar inscripción (aprendiz)
 - `POST /api/cursos/:id/generar-estructura` — Generar `modulos/lecciones` vía Groq JSON (solo mentor dueño)
 - `POST /api/cursos/:cursoId/documentos` — Subir PDF y procesarlo (solo dueño del curso)
@@ -169,6 +181,7 @@ Ver [`06_API_MODELS_REFERENCE.md`](06_API_MODELS_REFERENCE.md) sección 9 para l
 - **Embeddings locales** con `@xenova/transformers` — sin costo por request, CPU-bound (~50-200ms por embedding).
 - **Procesamiento síncrono de PDFs** dentro del request de subida — OK para PDFs <5 MB; para >10 MB extraer a Bull/BullMQ.
 - **Inscritos embebidos** en `Curso` (`inscritos: [{id, nombre, correo}]`) en vez de colección `enrollments` separada — simple para MVP, índice `enrollments` permanece sin uso.
+- **Pagos PayU Web Checkout** para Colombia: sin SDK; el backend firma un formulario y el frontend lo envía por POST. La confirmación server-to-server es la fuente de verdad.
 - **Cloudinary** para PDFs (`resource_type: 'raw'`, carpeta `mentorsync/documentos`) — simplicidad, CDN, free tier 10 GB.
 - **Zod v4** — `error.issues` y opción `error` (no `errorMap`).
 - **Repository Pattern** estricto — services nunca importan modelos directos.

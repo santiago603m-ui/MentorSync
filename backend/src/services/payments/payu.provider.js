@@ -2,108 +2,120 @@ import crypto from 'node:crypto';
 import { AppError } from '../../utils/AppError.js';
 
 /**
- * Proveedor de pagos: PayU Latam (Colombia, Web Checkout — formulario HTML).
- * Todo lo específico de PayU vive SOLO en este archivo.
+ * Proveedor de pagos: PayU Latam (Colombia, Web Checkout HTML).
+ * Todo lo específico de PayU vive únicamente en este archivo.
  *
  * Docs oficiales:
- *  - Formulario de pago:      https://developers.payulatam.com/latam/es/docs/integrations/webcheckout-integration/payment-form.html
- *  - Página de confirmación:  https://developers.payulatam.com/latam/es/docs/integrations/webcheckout-integration/confirmation-page.html
- *
- * A diferencia de Wompi (redirección a una URL), PayU recibe el pago mediante un
- * FORMULARIO enviado por POST a su gateway. Por eso `armarFormularioCheckout` no
- * devuelve una URL: devuelve la acción del formulario + los campos que hay que enviar.
+ * - Payment Form: https://developers.payulatam.com/latam/en/docs/integrations/webcheckout-integration/payment-form.html
+ * - Confirmation URL: https://developers.payulatam.com/latam/en/docs/integrations/confirmation-url.html
  */
 
 export const MONEDA = 'COP';
+export const ALGORITMO_FIRMA = 'MD5';
 const ACCION_SANDBOX = 'https://sandbox.checkout.payulatam.com/ppp-web-gateway-payu/';
 const ACCION_PRODUCCION = 'https://checkout.payulatam.com/ppp-web-gateway-payu/';
 
 function requerirVariable(nombre) {
-  const valor = process.env[nombre];
+  const valor = process.env[nombre]?.trim();
   if (!valor) {
     throw new AppError(`Falta la variable de entorno ${nombre}`, 500, 'PAYU_NOT_CONFIGURED');
   }
   return valor;
 }
 
-// El monto del FORMULARIO de checkout se firma tal cual se envía: sin decimales si es
-// un número entero, o con 2 decimales si tiene centavos. Verificado byte a byte contra
-// un caso de prueba oficial de PayU (referenceCode=TestPayU, amount=20000 → sin decimales).
+function numeroPositivo(valor, nombre) {
+  const numero = Number(valor);
+  if (!Number.isFinite(numero) || numero <= 0) {
+    throw new AppError(`${nombre} no es válido`, 500, 'PAYU_NOT_CONFIGURED');
+  }
+  return numero;
+}
+
+// La firma del formulario usa exactamente el mismo texto enviado en `amount`.
 export function formatearMontoCheckout(valor) {
   return Number.isInteger(valor) ? String(valor) : valor.toFixed(2);
 }
 
-// El monto de la CONFIRMACIÓN (campo `value`) sigue una regla distinta y sí documentada
-// así por PayU: si el 2º decimal es 0, se firma con SOLO 1 decimal; si no, con 2.
+// PayU redondea la confirmación a un decimal si el segundo decimal es cero.
 export function formatearMontoConfirmacion(valor) {
-  const decimales = Math.round((valor % 1) * 100);
-  return decimales % 10 === 0 ? valor.toFixed(1) : valor.toFixed(2);
+  const numero = Number(valor);
+  if (!Number.isFinite(numero)) return String(valor);
+  const segundoDecimal = Math.round((numero % 1) * 100);
+  return segundoDecimal % 10 === 0 ? numero.toFixed(1) : numero.toFixed(2);
 }
 
-const md5 = (texto) => crypto.createHash('md5').update(texto, 'utf8').digest('hex');
+function md5(texto) {
+  return crypto.createHash('md5').update(texto, 'utf8').digest('hex');
+}
 
-function iguales(a, b) {
-  const bufA = Buffer.from(String(a).toLowerCase());
-  const bufB = Buffer.from(String(b).toLowerCase());
-  return bufA.length === bufB.length && crypto.timingSafeEqual(bufA, bufB);
+function compararTextoSeguro(a, b) {
+  const bufferA = Buffer.from(String(a).toLowerCase(), 'utf8');
+  const bufferB = Buffer.from(String(b).toLowerCase(), 'utf8');
+  return bufferA.length === bufferB.length && crypto.timingSafeEqual(bufferA, bufferB);
 }
 
 /**
- * Arma los campos del formulario de Web Checkout, ya firmados.
- * El frontend recibe { accion, campos } y hace un POST normal (auto-submit) con eso.
+ * Arma el formulario Web Checkout firmado que el frontend envía por POST.
+ * PayU Web Checkout no se integra mediante una URL GET simple.
  */
 export function armarFormularioCheckout({ referencia, montoPesos, correo, redirectUrl }) {
   const apiKey = requerirVariable('PAYU_API_KEY');
   const merchantId = requerirVariable('PAYU_MERCHANT_ID');
   const accountId = requerirVariable('PAYU_ACCOUNT_ID');
-  const entorno = process.env.PAYU_ENV || 'test'; // 'test' = sandbox por defecto (fail-safe)
-
-  const montoFormateado = formatearMontoCheckout(montoPesos);
+  const backendUrl = (process.env.BACKEND_URL || 'http://localhost:4000').replace(/\/$/, '');
+  const confirmationUrl = process.env.PAYU_CONFIRMATION_URL?.trim() || `${backendUrl}/api/pagos/confirmacion`;
+  const entorno = process.env.PAYU_ENV === 'production' ? 'production' : 'test';
+  const monto = numeroPositivo(montoPesos, 'El monto del curso');
+  const montoFormateado = formatearMontoCheckout(monto);
   const firma = md5(`${apiKey}~${merchantId}~${referencia}~${montoFormateado}~${MONEDA}`);
+  const tax = process.env.PAYU_TAX ?? '0';
+  const taxReturnBase = process.env.PAYU_TAX_RETURN_BASE ?? '0';
 
   return {
     accion: entorno === 'production' ? ACCION_PRODUCCION : ACCION_SANDBOX,
     campos: {
+      algorithmSignature: ALGORITMO_FIRMA,
       merchantId,
       accountId,
-      description: 'Inscripción a curso - MentorSync',
+      description: 'Inscripción a curso - MentorSync AI',
       referenceCode: referencia,
       amount: montoFormateado,
-      tax: '0',
-      taxReturnBase: '0',
+      tax,
+      taxReturnBase,
       currency: MONEDA,
       signature: firma,
-      test: entorno === 'production' ? 'FALSE' : 'TRUE',
+      test: entorno === 'production' ? '0' : '1',
       buyerEmail: correo,
       responseUrl: redirectUrl,
-      confirmationUrl: requerirVariable('PAYU_CONFIRMATION_URL'),
+      confirmationUrl,
     },
   };
 }
 
 /**
- * Verifica la firma que llega en la confirmación (webhook) de PayU.
- * Campos que envía PayU (application/x-www-form-urlencoded):
- *   merchant_id, reference_sale, value, currency, state_pol, sign, transaction_id, ...
- * SIEMPRE se firma con los valores QUE LLEGARON en la petición, nunca con los de la BD.
+ * Verifica la firma MD5 de la confirmación server-to-server de PayU.
+ * Siempre se usan los valores que llegaron en la petición, no los de MongoDB.
  */
 export function verificarFirmaConfirmacion(body) {
   const apiKey = requerirVariable('PAYU_API_KEY');
-  const { merchant_id, reference_sale, value, currency, state_pol, sign } = body ?? {};
-  if (!merchant_id || !reference_sale || value === undefined || !currency || !state_pol || !sign) {
+  const merchantIdConfigurado = requerirVariable('PAYU_MERCHANT_ID');
+  const { merchant_id: merchantId, reference_sale: referencia, value, currency, state_pol: estado, sign } = body ?? {};
+
+  if (!merchantId || !referencia || value === undefined || !currency || estado === undefined || !sign) {
     return false;
   }
+  if (merchantId !== merchantIdConfigurado) return false;
 
-  const montoFormateado = formatearMontoConfirmacion(Number(value));
-  const esperada = md5(`${apiKey}~${merchant_id}~${reference_sale}~${montoFormateado}~${currency}~${state_pol}`);
-  return iguales(esperada, sign);
+  const montoFormateado = formatearMontoConfirmacion(value);
+  const firmaEsperada = md5(`${apiKey}~${merchantId}~${referencia}~${montoFormateado}~${currency}~${estado}`);
+  return compararTextoSeguro(firmaEsperada, sign);
 }
 
-// Códigos de estado (state_pol) documentados por PayU
+// state_pol documentado por PayU.
 export const ESTADOS_POL = {
   4: 'APROBADA',
-  6: 'RECHAZADA',
   5: 'EXPIRADA',
+  6: 'RECHAZADA',
   7: 'PENDIENTE',
   104: 'ERROR',
 };

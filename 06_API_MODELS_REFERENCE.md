@@ -79,6 +79,21 @@ Subesquemas:
 
 **Estado:** solo modelo, sin repository/service/controller.
 
+### `payment.model.js` → `Pago` (colección real: `pagos`)
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `referencia` | String, requerido, único | `MS-<uuid v4>`, enviada como `referenceCode` |
+| `usuario.id/nombre/correo` | ObjectId/String | Snapshot tomado del usuario autenticado |
+| `curso` | ObjectId → `Curso` | Curso asociado al pago |
+| `montoCentavos` | Number, min 1 | Precio del servidor; se compara contra webhook |
+| `moneda` | `COP` | Único valor permitido |
+| `estado` | enum | `PENDIENTE`, `APROBADO`, `RECHAZADO`, `ANULADO`, `ERROR` |
+| `inscripcionAplicada` | Boolean | Claim atómico de inscripción |
+| `payu` | subdocumento | `transaccionId`, `metodoPago`, `estadoOriginal`, `merchantId` |
+
+Índice único de `referencia` + índice único parcial `{usuario.id, curso}` para `estado:'APROBADO'`.
+
 ### `liveSession.model.js` → `LiveSession` (colección real: `livesessions`)
 
 | Campo | Tipo | Notas |
@@ -204,6 +219,17 @@ Capa que encapsula Mongoose. Los services nunca importan modelos directos.
 | `listarPorThread` | `(threadId)` | `find({threadId}).sort({createdAt:1})` |
 | `listarPorCurso` | `(courseId, limite=50)` | `find({courseId}).sort({createdAt:-1}).limit(limite)` |
 
+### `payment.repository.js` → `PagoRepository` (singleton)
+
+| Método | Firma | Qué hace |
+|---|---|---|
+| `crear` | `(datosPago)` | `Pago.create` |
+| `buscarPorReferencia` | `(referencia)` | Busca el intento por `referenceCode` |
+| `existeAprobado` | `(usuarioId, cursoId)` | `Pago.exists(...)` |
+| `actualizarEstado` | `(id, {estado, estadoEsperado, payu})` | Compare-and-set por estado actual + snapshot PayU |
+| `reclamarInscripcion` | `(id)` | `inscripcionAplicada:false → true` solo si está `APROBADO` |
+| `liberarInscripcion` | `(id)` | Libera el claim si falla la inscripción, para que PayU reintente |
+
 ---
 
 ## 3. Services
@@ -281,6 +307,20 @@ Capa que encapsula Mongoose. Los services nunca importan modelos directos.
 | `enviarPregunta` | `(cursoId, aprendizId, pregunta, threadId?)` | Valida curso existe y `estado==='publicado'` (403 si no), genera `threadId=randomUUID()` si falta, guarda pregunta, llama `ragService.responderPregunta`, guarda respuesta bot → `{threadId, respuesta, mensajeId, fragmentosUsados}` |
 | `obtenerHistorial` | `(threadId)` | `listarPorThread` |
 
+### `payment.service.js` → `PagoService`
+
+| Método | Firma | Qué hace |
+|---|---|---|
+| `crearCheckout` | `(usuarioToken, cursoId)` | Valida curso publicado/precio/inscripción/pago previo, obtiene usuario, firma el formulario y persiste el intento `PENDIENTE` |
+| `procesarConfirmacion` | `(body)` | Verifica merchant + firma MD5, busca por referencia y llama `aplicarConfirmacion` |
+| `aplicarConfirmacion` | `(pago, body)` | Compara monto/moneda, mapea `state_pol`, hace transición atómica y aplica inscripción si queda `APROBADO` |
+| `consultarEstadoLocal` | `(referencia, usuarioId)` | Solo el dueño consulta; si aprobada pero pendiente, reintenta la inscripción y devuelve `inscripcionAplicada` |
+| `aplicarInscripcion` | `(pago)` | Reclama una sola vez y llama `cursoService.inscribirAprendiz`; libera el claim ante error |
+
+### `payments/payu.provider.js` → proveedor PayU
+
+Expone `armarFormularioCheckout`, `verificarFirmaConfirmacion`, `formatearMontoCheckout`, `formatearMontoConfirmacion`, `ESTADOS_POL` y `MONEDA`. Toda la lógica específica de PayU queda aislada aquí.
+
 ---
 
 ## 4. Controllers
@@ -329,6 +369,14 @@ Todos `try/catch → next(error)`.
 | `subirDocumento` | `POST /api/cursos/:cursoId/documentos` | `req.file` + `documentService.subirDocumento` →201 |
 | `listarDocumentos` | `GET /api/cursos/:cursoId/documentos` | `listarDocumentosDeCurso` →200 |
 | `verChunks` | `GET /api/cursos/:cursoId/documentos/:documentoId/chunks` | `knowledgeChunkRepository.buscarPorDocumento` directo (debt) →200 |
+
+### `payment.controller.js` (singleton)
+
+| Método | Ruta | Qué hace |
+|---|---|---|
+| `crearCheckout` | `POST /api/pagos/checkout` | `pagoService.crearCheckout` → 201 `{accion, campos, referencia}` |
+| `consultarEstado` | `GET /api/pagos/estado/:referencia` | `pagoService.consultarEstadoLocal` → 200 |
+| `recibirConfirmacion` | `POST /api/pagos/confirmacion` | Valida webhook; responde texto plano `OK` con HTTP 200 |
 
 ### `chat.controller.js` (singleton)
 
@@ -392,6 +440,11 @@ Debe ir después de `verificarToken`. 401 si `req.usuario.rol` falta, 403 si no 
 | `esquemaCambiarRol` | `rol` (enum igual) |
 | `esquemaCambiarEstado` | `activo` (boolean, `error: 'El campo activo debe ser verdadero o falso'`) |
 
+### `payment.validator.js`
+
+- `esquemaCrearCheckout`: body `{cursoId}` con ObjectId hexadecimal de 24 caracteres.
+- `validarParamsReferencia`: middleware de params que exige `MS-<uuid v4>`.
+
 ---
 
 ## 7. Utils
@@ -454,7 +507,7 @@ Base URL: `http://localhost:4000`
 | `GET` | `/api/cursos/:id` | — (público) | |
 | `POST` | `/api/cursos` | `verificarToken` + `verificarRol('mentor','administrador')` + `validar(esquemaCrearCurso)` | Si `administrador` y `body.mentor`, asigna a ese mentor (valida rol mentor) |
 | `POST` | `/api/cursos/:id/generar-estructura` | `verificarToken` + `verificarRol('mentor')` | Genera `modulos/lecciones` vía Groq JSON (requiere `contenidoTextoPlano`) |
-| `POST` | `/api/cursos/:id/inscribir` | `verificarToken` | Inscribe aprendiz (`inscritos[]` con `$addToSet`), evita duplicado |
+| `POST` | `/api/cursos/:id/inscribir` | `verificarToken` + `exigirPagoSiCursoEsDePago` | Solo cursos gratuitos; un curso de precio `> 0` devuelve 402 `PAYMENT_REQUIRED` |
 | `DELETE` | `/api/cursos/:id/inscritos/:inscritoId` | `verificarToken` + `verificarRol('aprendiz')` | `$pull` por `_id` de subdocumento |
 | `PATCH` | `/api/cursos/:id` | `verificarToken` + `verificarRol('mentor','administrador')` + `validar(esquemaActualizarCurso)` | Verifica propiedad (admin bypass) |
 | `PATCH` | `/api/cursos/:id/estado` | `verificarToken` + `verificarRol('mentor','administrador')` + `validar(esquemaCambiarEstado)` | |
@@ -470,7 +523,15 @@ Base URL: `http://localhost:4000`
 | `POST` | `/api/cursos/:cursoId/chat` | `verificarToken` + `validar(esquemaPregunta)` | `{pregunta, threadId?}` → `{threadId, respuesta, mensajeId, fragmentosUsados}` (curso debe estar `publicado`) |
 | `GET` | `/api/cursos/chat/historial/:threadId` | `verificarToken` | Historial de hilo ordenado cronológicamente |
 
-Verificados 2026-08-31 (auth/cursos), 2026-09-01 (documentos/chat), 2026-09-22 (usuarios admin + inscribir/estructura) con Bruno.
+### `/api/pagos` — PayU Colombia
+
+| Método | Ruta | Middleware | Notas |
+|---|---|---|---|
+| `POST` | `/api/pagos/confirmacion` | `urlencoded` + firma MD5 | Webhook público server-to-server; responde `OK` |
+| `POST` | `/api/pagos/checkout` | `verificarToken` + `verificarRol('aprendiz')` + Zod | `{cursoId}` → `{accion, campos, referencia}` |
+| `GET` | `/api/pagos/estado/:referencia` | `verificarToken` + `verificarRol('aprendiz')` + params Zod | Solo el dueño; incluye `inscripcionAplicada` |
+
+Verificados 2026-08-31 (auth/cursos), 2026-09-01 (documentos/chat), 2026-09-22 (usuarios admin + inscribir/estructura) y 2026-09-23 (PayU automatizado; falta prueba real contra credenciales del usuario).
 
 ---
 
@@ -518,9 +579,18 @@ CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
 GROQ_API_KEY=
 GROQ_MODEL=
+BACKEND_URL=
+FRONTEND_URL=
+PAYU_ENV=test
+PAYU_API_KEY=
+PAYU_MERCHANT_ID=
+PAYU_ACCOUNT_ID=
+PAYU_CONFIRMATION_URL=
+PAYU_TAX=0
+PAYU_TAX_RETURN_BASE=0
 ```
 
-`GROQ_API_KEY`/`GROQ_MODEL` necesarias para chat y `generar-estructura`. Servidor arranca sin ellas (lazy init), pero esas rutas lanzan 503 si faltan. `check-setup.js` valida `PORT`, `MONGODB_URI`, `JWT_SECRET`, `GROQ_API_KEY`, `GROQ_MODEL`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (8 vars).
+PayU no añade dependencias: usa `node:crypto` y Web Checkout HTML. `PAYU_ENV=test` es el default seguro. `check-setup.js` valida 13 variables; las tres credenciales PayU, `BACKEND_URL` y `FRONTEND_URL` son obligatorias.
 
 ---
 
@@ -537,6 +607,8 @@ GROQ_MODEL=
 - ✅ Módulo `user` (repository/service/controller/validator/routes) implementado.
 - ✅ `course.model` `inscritos` + `modulos/lecciones` + `contenidoTextoPlano` + `estado` default `publicado` implementados.
 - ✅ `course.repository` `listarTodos`/`inscribirAprendiz`/`cancelarInscripcion` y `course.service` `generarEstructuraCurso` implementados.
+- ✅ Módulo PayU completo (modelo/repository/service/controller/validator/routes/provider), webhook MD5 e inscripción idempotente.
+- ✅ Endpoint directo de inscripción protegido para impedir saltar el pago.
 
 **Pendiente (no bloquea MVP, pero fuera de convención):**
 - [ ] Sin bloques `@openapi` ni `swagger-ui-express` montado (`// TODO` en `server.js`).
@@ -550,4 +622,4 @@ GROQ_MODEL=
 
 ---
 
-*Última revisión: 2026-09-22. Actualizar este documento cada vez que se agregue un método, modelo, middleware o validator nuevo.*
+*Última revisión: 2026-09-24. Actualizar este documento cada vez que se agregue un método, modelo, middleware o validator nuevo.*

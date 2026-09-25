@@ -10,6 +10,32 @@
 
 ---
 
+## [2026-09-24] — Pasarela PayU Colombia completa (backend + frontend)
+
+**Hecho:**
+- Implementado módulo `pagos` con Model/Repository/Service/Controller/Validator/Routes y colección `pagos`; estados `PENDIENTE|APROBADO|RECHAZADO|ANULADO|ERROR`.
+- PayU Web Checkout encapsulado en `payu.provider.js`: sandbox/producción, formulario HTML, firma MD5, `test=1|0`, `responseUrl` y `confirmationUrl`.
+- Webhook público `POST /api/pagos/confirmacion` con parser `x-www-form-urlencoded`, validación de merchant/firma/monto/moneda y estados idempotentes.
+- `POST /api/pagos/checkout` autenticado (solo aprendices), `GET /api/pagos/estado/:referencia` autenticado y resultado de pago con polling del estado local.
+- `POST /api/cursos/:id/inscribir` protegido: solo cursos gratuitos; los cursos `precio > 0` devuelven 402 `PAYMENT_REQUIRED`.
+- El dashboard Angular envía el formulario POST a PayU (ya no usa una `checkoutUrl` inexistente); el catálogo y los flujos existentes no fueron rediseñados.
+- Agregado `.env.example`, validación de 13 variables en `check-setup.js` y pruebas `npm run test:payments` (7 casos: firmas, formato de monto, mismatch e idempotencia).
+
+**Decisiones:**
+- El precio y los datos del comprador se obtienen solo del servidor. La respuesta del navegador PayU no es fuente de verdad.
+- Una referencia aprobada es terminal; si PayU reintenta una referencia rechazada y luego aprueba, la aprobación prevalece.
+- `PaymentRepository.reclamarInscripcion` usa compare-and-set para que una sola confirmación aplique la inscripción; si falla, libera el claim para permitir el reintento de PayU.
+
+**Verificación:**
+- `npm run test:payments`: 7/7 pruebas.
+- `npm run build` frontend: correcto, sin warnings (bundle inicial 697.70 kB).
+
+**Pendiente externo:**
+- Configurar credenciales PayU sandbox y una `BACKEND_URL` pública para probar el webhook; cambiar `PAYU_ENV=production` solo tras validar sandbox.
+- Confirmar con asesoría tributaria los valores `PAYU_TAX` y `PAYU_TAX_RETURN_BASE` antes de producción.
+
+---
+
 ## [2026-09-22] — Socket.io para reuniones en vivo (backend)
 
 **Hecho:**

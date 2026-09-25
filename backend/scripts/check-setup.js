@@ -11,6 +11,11 @@ const requeridas = [
   'CLOUDINARY_CLOUD_NAME',
   'CLOUDINARY_API_KEY',
   'CLOUDINARY_API_SECRET',
+  'PAYU_API_KEY',
+  'PAYU_MERCHANT_ID',
+  'PAYU_ACCOUNT_ID',
+  'BACKEND_URL',
+  'FRONTEND_URL',
 ];
 const faltantes = requeridas.filter((v) => !process.env[v]);
 

@@ -57,7 +57,7 @@ export class AprendizPageComponent implements OnInit {
     const curso = this.cursos.find(c => c._id === cursoId);
     if (curso && curso.precio > 0) {
       this.pagoService.crearCheckout(cursoId).subscribe({
-        next: (res) => { window.location.href = res.data.checkoutUrl; },
+        next: (res) => { this.pagoService.redirigirAPayU(res.data.accion, res.data.campos); },
         error: (err) => alert(err?.error?.error?.message ?? 'No se pudo iniciar el pago, intenta de nuevo.')
       });
       return;
@@ -105,7 +105,7 @@ export class AprendizPageComponent implements OnInit {
   }
 
   // 👇 Función correcta para trackBy
-  trackById(index: number, curso: Curso): string {
+   trackById(index: number, curso: Curso): string {
     return curso._id ?? index.toString();
   }
 }

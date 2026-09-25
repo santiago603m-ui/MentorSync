@@ -5,7 +5,6 @@ import cursoService from './course.service.js';
 import * as payu from './payments/payu.provider.js';
 import { AppError } from '../utils/AppError.js';
 
-// state_pol de PayU → estados internos del modelo Pago
 const MAPA_ESTADOS = {
   APROBADA: 'APROBADO',
   RECHAZADA: 'RECHAZADO',
@@ -14,12 +13,12 @@ const MAPA_ESTADOS = {
   ERROR: 'ERROR',
 };
 
-// PENDIENTE puede pasar a cualquier estado final; APROBADO solo puede terminar ANULADO;
-// los demás son finales. Así una notificación tardía o repetida nunca "retrocede" un pago.
+// Un mismo referenceCode puede reintentarse en PayU. Una aprobación siempre gana;
+// después de APROBADO, cualquier notificación tardía se ignora.
 function transicionValida(actual, nuevo) {
   if (actual === nuevo) return true;
   if (actual === 'PENDIENTE') return true;
-  if (actual === 'APROBADO') return nuevo === 'ANULADO';
+  if (['RECHAZADO', 'ANULADO', 'ERROR'].includes(actual)) return nuevo === 'APROBADO';
   return false;
 }
 
@@ -31,78 +30,75 @@ class PagoService {
     this.payu = payu;
   }
 
-  /**
-   * Paso 1: el aprendiz quiere pagar un curso.
-   * El PRECIO sale de la base de datos, nunca del cliente.
-   * Devuelve la acción y los campos del formulario que el frontend debe enviar por POST.
-   */
   async crearCheckout(usuarioToken, cursoId) {
-    const curso = await this.cursos.obtenerCursoPorId(cursoId); // lanza 404 si no existe
+    const curso = await this.cursos.obtenerCursoPorId(cursoId);
 
     if (curso.estado !== 'publicado') {
       throw new AppError('El curso no está disponible para inscripción', 400, 'COURSE_NOT_PUBLISHED');
     }
-    if (!(curso.precio > 0)) {
+    if (!Number.isFinite(Number(curso.precio)) || Number(curso.precio) <= 0) {
       throw new AppError('Este curso es gratuito: usa la inscripción directa', 400, 'COURSE_IS_FREE');
     }
 
-    const yaInscrito = curso.inscritos.some((i) => i.id.toString() === String(usuarioToken.id));
+    const usuarioId = String(usuarioToken.id);
+    const yaInscrito = curso.inscritos.some((inscrito) => String(inscrito.id) === usuarioId);
     if (yaInscrito) {
       throw new AppError('Ya estás inscrito en este curso', 409, 'ALREADY_ENROLLED');
     }
-    if (await this.pagos.existeAprobado(usuarioToken.id, curso._id)) {
+    if (await this.pagos.existeAprobado(usuarioId, curso._id)) {
       throw new AppError('Ya pagaste este curso', 409, 'ALREADY_PAID');
     }
 
     const usuario = await this.usuarios.buscarPorEmail(usuarioToken.email);
     if (!usuario) {
-      throw new AppError('Usuario no encontrado', 404);
+      throw new AppError('Usuario no encontrado', 404, 'USER_NOT_FOUND');
     }
 
-    const referencia = `MS-${randomUUID()}`; // única por intento
+    const referencia = `MS-${randomUUID()}`;
+    const montoCentavos = Math.round(Number(curso.precio) * 100);
+    if (montoCentavos < 1) {
+      throw new AppError('El precio del curso no es válido', 400, 'INVALID_COURSE_PRICE');
+    }
+
+    // Armar y firmar primero evita dejar intentos huérfanos si PayU no está configurado.
+    const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:4200').replace(/\/$/, '');
+    const { accion, campos } = this.payu.armarFormularioCheckout({
+      referencia,
+      montoPesos: Number(curso.precio),
+      correo: usuario.email,
+      redirectUrl: `${frontendUrl}/pago/resultado?ref=${encodeURIComponent(referencia)}`,
+    });
 
     await this.pagos.crear({
       referencia,
       usuario: { id: usuario._id, nombre: usuario.nombre, correo: usuario.email },
       curso: curso._id,
-      montoCentavos: Math.round(curso.precio * 100), // se guarda en centavos, igual que con Wompi
+      montoCentavos,
       moneda: payu.MONEDA,
-    });
-
-    const frontend = process.env.FRONTEND_URL || 'http://localhost:4200';
-    const { accion, campos } = this.payu.armarFormularioCheckout({
-      referencia,
-      montoPesos: curso.precio, // PayU trabaja en pesos, no en centavos
-      correo: usuario.email,
-      redirectUrl: `${frontend}/pago/resultado?ref=${referencia}`,
     });
 
     return { accion, campos, referencia };
   }
 
-  /**
-   * Confirmación (webhook) de PayU: llega como application/x-www-form-urlencoded.
-   * Solo se procesa si la firma es válida.
-   */
+  /** Confirmación server-to-server de PayU (application/x-www-form-urlencoded). */
   async procesarConfirmacion(body) {
     if (!this.payu.verificarFirmaConfirmacion(body)) {
       throw new AppError('Firma de confirmación inválida', 401, 'INVALID_SIGNATURE');
     }
 
     const pago = await this.pagos.buscarPorReferencia(body.reference_sale);
-    if (!pago) return { ignorado: true }; // referencia que no es de este sistema
+    if (!pago) return { ignorado: true };
 
     await this.aplicarConfirmacion(pago, body);
     return { ignorado: false };
   }
 
-  /**
-   * Núcleo idempotente: se puede llamar N veces con la misma confirmación sin duplicar nada.
-   */
+  /** Procesamiento idempotente y seguro ante reintentos/notificaciones simultáneas. */
   async aplicarConfirmacion(pago, body) {
     const montoRecibido = Math.round(Number(body.value) * 100);
-    // Defensa anti-manipulación: lo que PayU reporta debe coincidir con lo registrado.
-    if (montoRecibido !== pago.montoCentavos || body.currency !== pago.moneda) {
+    const monedaRecibida = String(body.currency || '').toUpperCase();
+
+    if (!Number.isFinite(montoRecibido) || montoRecibido !== pago.montoCentavos || monedaRecibida !== pago.moneda) {
       throw new AppError(
         'El monto o la moneda reportados no coinciden con el pago registrado',
         409,
@@ -110,19 +106,31 @@ class PagoService {
       );
     }
 
-    const estadoPol = payu.ESTADOS_POL[Number(body.state_pol)] ?? 'ERROR';
-    const estadoNuevo = MAPA_ESTADOS[estadoPol] ?? 'ERROR';
-
+    const estadoPayU = payu.ESTADOS_POL[Number(body.state_pol)] ?? 'ERROR';
+    const estadoNuevo = MAPA_ESTADOS[estadoPayU] ?? 'ERROR';
     let actual = pago;
-    if (estadoNuevo !== pago.estado && transicionValida(pago.estado, estadoNuevo)) {
-      actual = await this.pagos.actualizarEstado(pago._id, {
+
+    // Si dos webhooks llegan juntos, el compare-and-set del repo decide el ganador.
+    // Si una notificación quedó desfasada, se relee y se reintenta una vez.
+    for (let intento = 0; intento < 3; intento += 1) {
+      if (estadoNuevo === actual.estado || !transicionValida(actual.estado, estadoNuevo)) break;
+
+      const actualizado = await this.pagos.actualizarEstado(actual._id, {
         estado: estadoNuevo,
-        wompi: { // mismo sub-documento del modelo; se reutiliza para cualquier pasarela
+        estadoEsperado: actual.estado,
+        payu: {
           transaccionId: body.transaction_id ?? null,
           metodoPago: body.payment_method_name ?? null,
-          estadoOriginal: estadoPol,
+          estadoOriginal: estadoPayU,
+          merchantId: body.merchant_id,
         },
       });
+
+      if (actualizado) {
+        actual = actualizado;
+        break;
+      }
+      actual = await this.pagos.buscarPorReferencia(pago.referencia);
     }
 
     if (actual.estado === 'APROBADO') {
@@ -132,22 +140,32 @@ class PagoService {
   }
 
   /**
-   * La página de respuesta de PayU NO es confiable (el propio PayU lo advierte: el
-   * usuario puede alterar los parámetros o cerrar el navegador). Por eso el frontend,
-   * al volver, no le pregunta a PayU: consulta el estado que YA tenemos en nuestra BD,
-   * actualizado por la confirmación (webhook), que es la única fuente de verdad.
+   * La respuesta del navegador no es confiable: el frontend consulta únicamente
+   * el estado guardado por el webhook. Si el pago ya fue aprobado pero la
+   * inscripción quedó pendiente por un fallo temporal, se reintenta de forma segura.
    */
   async consultarEstadoLocal(referencia, usuarioId) {
-    const pago = await this.pagos.buscarPorReferencia(referencia);
+    let pago = await this.pagos.buscarPorReferencia(referencia);
     if (!pago || String(pago.usuario.id) !== String(usuarioId)) {
       throw new AppError('Pago no encontrado', 404, 'PAYMENT_NOT_FOUND');
     }
-    return { referencia: pago.referencia, estado: pago.estado, cursoId: String(pago.curso) };
+
+    if (pago.estado === 'APROBADO' && !pago.inscripcionAplicada) {
+      await this.aplicarInscripcion(pago);
+      pago = await this.pagos.buscarPorReferencia(referencia);
+    }
+
+    return {
+      referencia: pago.referencia,
+      estado: pago.estado,
+      cursoId: String(pago.curso),
+      inscripcionAplicada: Boolean(pago.inscripcionAplicada),
+    };
   }
 
   async aplicarInscripcion(pago) {
     const reclamado = await this.pagos.reclamarInscripcion(pago._id);
-    if (!reclamado) return; // ya inscrito (o en proceso por otra petición)
+    if (!reclamado) return;
 
     try {
       const curso = await this.cursos.inscribirAprendiz(String(pago.curso), {
@@ -159,7 +177,6 @@ class PagoService {
         throw new AppError('El curso ya no existe: no se pudo inscribir', 404, 'COURSE_NOT_FOUND');
       }
     } catch (error) {
-      // Libera el "candado" para que el reintento de la confirmación lo repita.
       await this.pagos.liberarInscripcion(pago._id);
       throw error;
     }

@@ -26,7 +26,7 @@ Plataforma web de mentoría híbrida (estilo Platzi, pero diferenciada) donde:
 
 | Rol | Estado | Permisos previstos |
 |---|---|---|
-| **Aprendiz** | Implementado | Inscribirse a cursos (`POST /:id/inscribir`), cancelar inscripción, chatear con el bot (`POST /:cursoId/chat`), ver historial |
+| **Aprendiz** | Implementado | Inscribirse a cursos gratuitos (`POST /:id/inscribir`), pagar cursos de precio `> 0` con PayU (`POST /api/pagos/checkout`), consultar el retorno del pago, cancelar inscripción, chatear con el bot (`POST /:cursoId/chat`), ver historial |
 | **Mentor** | Implementado | Crear cursos, subir PDF y generar estructura (`POST /:id/generar-estructura`), dictar, ver `mis-cursos`, listar documentos/chunks |
 | **Administrador** | Implementado | Control total: CRUD usuarios (`/api/usuarios`), aprobar roles/estados, `GET /api/cursos/admin/todos`, crear cursos asignados a mentor, bypass de propiedad en cursos |
 
@@ -36,6 +36,7 @@ Plataforma web de mentoría híbrida (estilo Platzi, pero diferenciada) donde:
 
 - **Frontend:** Angular 22 standalone + SSR (signal-first) + diseño **glassmorphism** (ver `02_FRONTEND_GUIDELINES.md`) + Vanta.js (three) + GSAP/anime.js + `marked`+`dompurify` para render de bot + Font Awesome 6.5.2 (CDN) — **✅ implementado** (`home`, `auth` unificada, `courses`, `learner-dashboard`, `mentor-dashboard`, `admin-panel` + `sidebar` Atlas + `theme.service`)
 - **Backend:** Node.js 24.20 + Express 4.21.x + Mongoose 8.9
+- **Pagos:** PayU Latam Colombia Web Checkout (`MD5`, HTML POST firmado, `confirmationUrl` server-to-server) — **✅ implementado**; cursos gratuitos conservan inscripción directa
 - **Base de datos:** MongoDB Atlas (incluye **Atlas Vector Search** para el RAG — no Pinecone/Weaviate)
 - **Almacenamiento de archivos:** Cloudinary (PDFs `resource_type: 'raw'`, carpeta `mentorsync/documentos`) + `sharp` para imágenes — **✅ implementado**
 - **IA generativa:** Groq API (`llama-3.3-70b-versatile`) — **✅ implementado** en `groq.provider.js` y en generación de estructura de cursos (`course.service.generarEstructuraCurso`)

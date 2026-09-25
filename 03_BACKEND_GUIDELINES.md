@@ -58,6 +58,16 @@ Error: `{ "success": false, "error": { "message": "..." } }` (pasado por `maneja
 - `disconnect` → para cada `liveSessionId` en `socket.data.sesiones`, broadcast `sala:usuario_salio` y si `rol==='mentor'` también `mentor_desconectado` (permite al frontend mostrar aviso y activar el bot).
 - Validación de mensajes con `esquemaMensajeSala` (Zod) en frontend y `trim().length` en socket; `liveSession` estados `programada|en_curso|finalizada|cancelada` validados por `esquemaCambiarEstadoSesion`.
 
+## Pagos PayU (`services/payments/`)
+
+1. El precio, moneda y usuario se toman del servidor; el cliente nunca envía el monto.
+2. `payu.provider.js` encapsula URLs sandbox/producción, armado del formulario HTML, firma MD5 y validación del webhook.
+3. `POST /api/pagos/confirmacion` es público, usa `application/x-www-form-urlencoded` y solo procesa merchants/firmas válidos.
+4. La confirmación compara monto y moneda con el snapshot de `pagos`; una referencia aprobada es terminal.
+5. `PaymentRepository.reclamarInscripcion` usa compare-and-set (`inscripcionAplicada:false → true`) para que una sola confirmación aplique la inscripción.
+6. `POST /api/cursos/:id/inscribir` solo permite cursos gratuitos; uno de precio `> 0` devuelve 402 `PAYMENT_REQUIRED`.
+7. El frontend nunca interpreta parámetros de la respuesta de PayU: consulta `GET /api/pagos/estado/:referencia` autenticado.
+
 ## Control de acceso por rol (RBAC)
 
 ```js
@@ -112,8 +122,17 @@ CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
 GROQ_API_KEY=
 GROQ_MODEL=
+BACKEND_URL=
+FRONTEND_URL=
+PAYU_ENV=test
+PAYU_API_KEY=
+PAYU_MERCHANT_ID=
+PAYU_ACCOUNT_ID=
+PAYU_CONFIRMATION_URL=
+PAYU_TAX=0
+PAYU_TAX_RETURN_BASE=0
 ```
 
-`scripts/check-setup.js` valida `PORT`, `MONGODB_URI`, `JWT_SECRET`, `GROQ_API_KEY`, `GROQ_MODEL`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (8 vars). Correr `npm run check-setup` antes de levantar el server.
+`scripts/check-setup.js` valida 13 variables: las 8 generales existentes más `PAYU_API_KEY`, `PAYU_MERCHANT_ID`, `PAYU_ACCOUNT_ID`, `BACKEND_URL` y `FRONTEND_URL`. `PAYU_ENV` es opcional y usa `test` por defecto. Correr `npm run check-setup` antes de levantar el server.
 
 Engines: `node >=24.20.0`. Deps nuevas: `sharp@0.35.4`, `validator@13.15.35`.

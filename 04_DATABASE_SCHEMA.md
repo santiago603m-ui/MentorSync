@@ -50,6 +50,21 @@ createdAt, updatedAt
 ```
 Índices: `{ mentor: 1 }`, `{ estado: 1 }`.
 
+### `pagos`  (modelo `Pago`, `payment.model.js`)
+```
+_id
+referencia: String, unique                 // "MS-<uuid v4>" = referenceCode de PayU
+usuario: { id → usuarios, nombre, correo } // snapshot para aplicar la inscripción desde webhook
+curso → cursos, requerido
+montoCentavos: Number, min 1                // snapshot del precio del servidor
+moneda: "COP"
+estado: "PENDIENTE" | "APROBADO" | "RECHAZADO" | "ANULADO" | "ERROR"
+inscripcionAplicada: Boolean                // claim atómico de inscripción
+payu: { transaccionId, metodoPago, estadoOriginal, merchantId }
+createdAt, updatedAt
+```
+Índices: `referencia` único; índice único parcial `{usuario.id, curso}` únicamente para pagos `APROBADO`.
+
 ### `enrollments`  (modelo `Enrollment`, `enrollment.model.js`) — sin repository/service (reservado)
 ```
 _id
