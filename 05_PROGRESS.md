@@ -10,6 +10,20 @@
 
 ---
 
+## [2026-09-24] — Eliminación de modos de diseño claro (light) y cyberpunk (fijado a tema oscuro)
+
+**Hecho:**
+- Eliminadas las reglas CSS de `body.theme-cyberpunk` y `[data-theme="light"]` en `frontend/src/styles.css`.
+- Simplificado `frontend/src/app/shared/services/theme.service.ts`: se eliminaron los métodos `isLight`, `isCyberpunk`, `toggle` y `toggleMode`, fijando el tema exclusivamente en `mode: 'dark'`.
+- Limpieza en `responsive-layout.component.ts`: eliminada la inyección de `ThemeService` y la bifurcación condicional de colores de partículas neón cyberpunk; fijados colores de constelación por defecto (`139, 107, 255` y `34, 211, 238`).
+- Limpieza en `vanta-background.component.ts`: eliminado `COLOR_POR_MODO` con color light; fijado a `COLOR_FONDO_VANTA = 0x1b1035`.
+- Actualizada toda la documentación maestra (`00_PROJECT_CONTEXT.md`, `01_ARCHITECTURE.md`, `02_FRONTEND_GUIDELINES.md`, `README.md`) para reflejar que la interfaz opera únicamente bajo el tema oscuro glassmorphic.
+
+**Decisiones:**
+- Unificar la experiencia visual en un único tema oscuro cohesivo, reduciendo complejidad innecesaria de CSS y sincronización de estado.
+
+---
+
 ## [2026-09-22] — Socket.io para reuniones en vivo (backend)
 
 **Hecho:**

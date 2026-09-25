@@ -96,74 +96,6 @@ a { color: inherit; }
   border-radius: var(--radius-sm);
 }
 
-/* =====================================================================
-   Tema Cyberpunk — se activa agregando la clase .theme-cyberpunk al <body>.
-   Sobreescribe las mismas variables, así que TODO el resto del sistema
-   (cards, botones, navbar, inputs) cambia de color automáticamente sin
-   tocar ningún componente.
-   ===================================================================== */
-body.theme-cyberpunk {
-  --bg-base: #05010D;
-  --bg-base-elevated: #0A0518;
-  --surface-1: #0E0620;
-  --surface-2: #150A2E;
-  --surface-2-hover: #1D0F3E;
-  --surface-3: #26134F;
-
-  --border-subtle: #3A1C6E;
-  --border-strong: #FF2AFB;
-
-  --text-primary: #F2E9FF;
-  --text-secondary: #B79CE8;
-  --text-muted: #7C5FB0;
-
-  --accent-violet: #FF2AFB;
-  --accent-violet-dim: #C21ED1;
-  --accent-cyan: #00FFF7;
-  --accent-cyan-dim: #00C4C4;
-  --accent-gradient: linear-gradient(90deg, var(--accent-violet), var(--accent-cyan));
-
-  --danger: #FF3860;
-  --success: #39FF9E;
-  --warning: #FFD84A;
-
-  --shadow-card: 0 0 1px rgba(255, 42, 251, 0.4), 0 8px 28px rgba(0, 0, 0, 0.55);
-  --shadow-pop: 0 0 40px rgba(0, 255, 247, 0.18), 0 16px 48px rgba(0, 0, 0, 0.6);
-
-  --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
-}
-
-/* Brillo neón extra en superficies interactivas cuando el tema está activo */
-body.theme-cyberpunk {
-  transition: background 0.4s ease;
-}
-body.theme-cyberpunk .course-card,
-body.theme-cyberpunk .session-window,
-body.theme-cyberpunk .session-card {
-  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.25s ease;
-}
-body.theme-cyberpunk .course-card:hover,
-body.theme-cyberpunk .modal-content {
-  box-shadow: 0 0 0 1px var(--accent-cyan), 0 0 24px rgba(0, 255, 247, 0.35), 0 0 48px rgba(255, 42, 251, 0.2);
-}
-body.theme-cyberpunk .cta-primary,
-body.theme-cyberpunk .btn.accent,
-body.theme-cyberpunk .submit-btn {
-  box-shadow: 0 0 16px rgba(255, 42, 251, 0.45);
-}
-body.theme-cyberpunk .cta-primary:hover,
-body.theme-cyberpunk .btn.accent:hover,
-body.theme-cyberpunk .submit-btn:hover {
-  box-shadow: 0 0 10px rgba(0, 255, 247, 0.6), 0 0 30px rgba(255, 42, 251, 0.55);
-}
-body.theme-cyberpunk .grad-text,
-body.theme-cyberpunk .brand-accent {
-  filter: drop-shadow(0 0 10px rgba(255, 42, 251, 0.55));
-}
-body.theme-cyberpunk :focus-visible {
-  outline-color: var(--accent-violet);
-}
-
 /* Respeta preferencia de movimiento reducido */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -175,9 +107,8 @@ body.theme-cyberpunk :focus-visible {
 }
 
 /* =====================================================================
-   Glassmorphism + modo claro/oscuro.
-   --glass-* vive aquí (hoja viva del build). El modo se activa con
-   data-theme="light" en <html> vía ThemeService. Por defecto: dark.
+   Glassmorphism — Tema oscuro fijo.
+   --glass-* vive aquí (hoja viva del build).
    ===================================================================== */
 :root {
   color-scheme: dark;
@@ -190,35 +121,6 @@ body.theme-cyberpunk :focus-visible {
   --glass-input: rgba(5, 5, 14, 0.55);
 
   --bg-gradient: radial-gradient(circle at top left, #1B1035, #0B0715 70%);
-}
-
-[data-theme="light"] {
-  color-scheme: light;
-
-  --bg-base: #EDF1F7;
-  --bg-base-elevated: #E2E8F1;
-  --surface-1: #FFFFFF;
-  --surface-2: #F1F4F9;
-  --surface-2-hover: #E4EAF3;
-  --surface-3: #D7DFEA;
-
-  --border-subtle: #D3DBE7;
-  --border-strong: #A9B6CB;
-
-  --text-primary: #0F172A;
-  --text-secondary: #475569;
-  --text-muted: #8491A8;
-
-  --glass-bg: rgba(255, 255, 255, 0.62);
-  --glass-bg-strong: rgba(255, 255, 255, 0.8);
-  --glass-border: rgba(15, 23, 42, 0.12);
-  --glass-shadow: 0 8px 32px rgba(15, 23, 42, 0.12);
-  --glass-input: rgba(255, 255, 255, 0.75);
-
-  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.08), 0 8px 24px rgba(15, 23, 42, 0.1);
-  --shadow-pop: 0 12px 40px rgba(15, 23, 42, 0.18);
-
-  --bg-gradient: radial-gradient(circle at top left, #DCE7F7, #EDF1F7 70%);
 }
 
 /* Utilidades glass reutilizables */

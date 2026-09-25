@@ -51,7 +51,7 @@ Plataforma web de mentoría híbrida (estilo Platzi, pero diferenciada) donde:
 ## 4. Documentos relacionados
 
 - `01_ARCHITECTURE.md` → patrones, estructura de carpetas, flujo RAG
-- `02_FRONTEND_GUIDELINES.md` → tokens glassmorphism, Tema claro/oscuro + cyberpunk, componentes
+- `02_FRONTEND_GUIDELINES.md` → tokens glassmorphism, tema oscuro fijo, componentes
 - `03_BACKEND_GUIDELINES.md` → convenciones ESM, AppError, formato respuesta, RBAC
 - `04_DATABASE_SCHEMA.md` → colecciones + índice vectorial + modelo `Curso` con `inscritos`/`modulos`
 - `05_PROGRESS.md` → bitácora (actualizar cada sprint)
@@ -61,7 +61,7 @@ Plataforma web de mentoría híbrida (estilo Platzi, pero diferenciada) donde:
 
 1. Nunca reemplaces MongoDB Atlas Vector Search, Groq ni @xenova/transformers sin documentarlo aquí primero.
 2. El bot de cada curso SOLO responde con contexto del `courseId` correspondiente — `filter: { courseId }` obligatorio en `$vectorSearch`.
-3. Sigue la paleta y variables CSS de `02_FRONTEND_GUIDELINES.md` y `src/styles.css` (`--glass-*`, `--bg-base`, `data-theme`/`theme-cyberpunk` vía `ThemeService`); no agregues Bootstrap/Material sin documentarlo.
+3. Sigue la paleta y variables CSS de `02_FRONTEND_GUIDELINES.md` y `src/styles.css` (`--glass-*`, `--bg-base`, tema oscuro fijo); no agregues Bootstrap/Material sin documentarlo.
 4. Sigue capas `Controller → Service → Repository → Model`; no metas lógica en controllers ni importes modelos directos en services (usa siempre `*Repository`).
 5. Antes de crear un endpoint, revisa si ya existe (ver `06_API_MODELS_REFERENCE.md` §9 y `server.js`).
 6. Actualiza `05_PROGRESS.md` al terminar funcionalidad relevante.

@@ -62,7 +62,7 @@ backend/
 ```
 frontend/src/app/
 ├── core/                 # guards/role.guard.ts (lee route.data.roles, redirige vía authService.rutaSegunRol), interceptors/auth.interceptor.ts, services/ (admin.service.ts, auth.service.ts, curso.service.ts, historial.service.ts)
-├── shared/                # components (sidebar Atlas 56+280px auto-hide, vanta-background, glass-card, button, input, logo, splash-screen) + pipes/filter.pipe.ts + services/theme.service.ts (mode dark/light + cyberpunk, signals, localStorage) + directives
+├── shared/                # components (sidebar Atlas 56+280px auto-hide, vanta-background, glass-card, button, input, logo, splash-screen) + pipes/filter.pipe.ts + services/theme.service.ts (tema oscuro fijo) + directives
 ├── features/
 │   ├── home/              # home-page (hero SVG con anime.js draw-line, spotlight GSAP, typer, marquee infinito, stats counters, timeline con IntersectionObserver, bento + tilt)
 │   ├── auth/              # AuthComponent unificada (/auth, redirects /login y /registro)
@@ -72,7 +72,7 @@ frontend/src/app/
 │   ├── admin-panel/       # admin-panel (usa AdminService + Sidebar) + admin-dashboard-quick (doughnut/círculos, barras semanales, crecimiento)
 │   └── ai-assistant/      # .gitkeep (reservado)
 ├── models/                 # admin.models.ts (UsuarioApi/CursoApi con _id, activo, rol minusculas, estado borrador|publicado|archivado, inscritos[]), auth.model.ts, curso.model.ts
-└── layouts/               # navbar (MentorSync AI pill, tema toggles), responsive-layout
+└── layouts/               # navbar (MentorSync AI pill), responsive-layout
 ```
 
 ## Flujo RAG (núcleo del proyecto)

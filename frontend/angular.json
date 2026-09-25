@@ -28,7 +28,10 @@
             "styles": [
               "src/styles.css"
             ],
-            "allowedCommonJsDependencies": ["vanta", "three", "vanta/dist/vanta.waves.min"],
+            "scripts": [
+              "node_modules/three/build/three.min.js",
+              "node_modules/vanta/dist/vanta.waves.min.js"
+            ],
             "security": {
               "allowedHosts": []
             }

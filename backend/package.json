@@ -55,8 +55,9 @@
   "engines": {
     "node": ">=24.20.0"
   },
-  "allowScripts": {
-    "sharp@0.32.6": true,
-    "sharp@0.35.4": true
+  "pnpm": {
+    "overrides": {
+      "sharp": "0.35.4"
+    }
   }
 }

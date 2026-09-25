@@ -2,7 +2,6 @@ import { Component, AfterViewInit, ElementRef, ViewChild, OnDestroy } from '@ang
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { NavbarComponent } from '../navbar/navbar.component';
-import { ThemeService } from '../../shared/services/theme.service';
 
 @Component({
   selector: 'app-responsive-layout',
@@ -97,7 +96,7 @@ export class ResponsiveLayoutComponent implements AfterViewInit, OnDestroy {
   private readonly LINK_DIST = 140;
   private reducedMotion = false;
 
-  constructor(private theme: ThemeService) {}
+  constructor() {}
 
   ngAfterViewInit() {
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -137,10 +136,8 @@ export class ResponsiveLayoutComponent implements AfterViewInit, OnDestroy {
     const canvas = this.canvasRef.nativeElement;
     const ctx = this.ctx;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const cyberpunk = this.theme.isCyberpunk();
-    const dotColor = cyberpunk ? '255, 42, 251' : '139, 107, 255';
-    const lineColor = cyberpunk ? '0, 255, 247' : '34, 211, 238';
+    const dotColor = '139, 107, 255';
+    const lineColor = '34, 211, 238';
 
     for (const p of this.particles) {
       p.x += p.vx;

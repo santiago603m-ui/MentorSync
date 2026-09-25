@@ -37,7 +37,7 @@ Plataforma web de mentoría híbrida con asistente de IA por curso (RAG).
 - Pipeline de chunking y embeddings: subida de PDF → extracción con `pdf-parse` → fragmentación (1000 chars, overlap 200) → embeddings 384D con `Xenova/all-MiniLM-L6-v2` → guardado en `knowledgechunks` (batch) → documento `completado` con URL Cloudinary
 - **Búsqueda vectorial** con Atlas `$vectorSearch` (cosine, `numCandidates = limite*20`, filtro obligatorio por `courseId`)
 - **Chatbot RAG end-to-end**: pregunta → embedding → vectorSearch (5 chunks) → prompt + Groq → guardado en `chatmessages` (`threadId` UUID)
-- Frontend funcional: Home con hero SVG animado + spotlight/marque + timeline glass, Auth unificada (`/auth` con redirect `/login`/`/registro`), Cursos, dashboards por rol (`/aprendiz`, `/mentor`, `/admin` con `roleGuard`), Admin panel (KPIs, doughnut roles, barras semanales, crecimiento mensual, tabla usuarios con editar rol/estado, CRUD cursos con estados `borrador|publicado|archivado`), sidebar Atlas (rail 56px + explorer 280px, auto-hide hover, glassmorphism) + Vanta background + ThemeService (`dark`/`light` + cyberpunk)
+- Frontend funcional: Home con hero SVG animado + spotlight/marque + timeline glass, Auth unificada (`/auth` con redirect `/login`/`/registro`), Cursos, dashboards por rol (`/aprendiz`, `/mentor`, `/admin` con `roleGuard`), Admin panel (KPIs, doughnut roles, barras semanales, crecimiento mensual, tabla usuarios con editar rol/estado, CRUD cursos con estados `borrador|publicado|archivado`), sidebar Atlas (rail 56px + explorer 280px, auto-hide hover, glassmorphism) + Vanta background + ThemeService (tema oscuro fijo)
 - Reuniones en vivo: `LiveSession` (programada/en_curso/finalizada/cancelada) + `ChatMessage.liveSessionId` + Socket.io rooms `sesion:{id}` (eventos `sala:unirse/mensaje/escribiendo/abandonar`, broadcasts `sala:*`, `mentor_desconectado`, `bot_activado`)
 - Repository Pattern estricto en todos los módulos (auth, course, document, knowledgeChunk, chatMessage, user, liveSession)
 - Middlewares: auth, role, validar (Zod v4), error centralizado
@@ -173,7 +173,7 @@ Ver [`06_API_MODELS_REFERENCE.md`](06_API_MODELS_REFERENCE.md) sección 9 para l
 - **Zod v4** — `error.issues` y opción `error` (no `errorMap`).
 - **Repository Pattern** estricto — services nunca importan modelos directos.
 - **Roles en minúsculas español** en Mongo (`aprendiz|mentor|administrador`) — el `roleGuard` del frontend usa `['Aprendiz','Mentor','Administrador']` (capitalizado, vía `auth.model.ts`).
-- **Tema glassmorphism** con `data-theme="light"|"dark"` + `.theme-cyberpunk` opcional vía `ThemeService` (signals `mode`/`isCyberpunk`, persiste en localStorage).
+- **Tema glassmorphism oscuro** fijo con paleta dark (`--bg-base: #0A0E16`, acentos violeta/cian). Se eliminaron los modos claro y cyberpunk.
 
 ## Contribuir / Desarrollo
 

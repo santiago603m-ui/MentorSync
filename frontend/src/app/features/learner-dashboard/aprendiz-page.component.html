@@ -1,57 +1,150 @@
 <div class="workspace-container">
   <main class="content-viewport">
     <!-- Unirse a sesión en vivo por código/link -->
-    <div class="card cosmic-card" style="margin-bottom:1rem">
+    <div class="card cosmic-card">
       <div class="card-header">
         <h2><i class="fa-solid fa-video"></i> Unirse a sesión en vivo</h2>
       </div>
-      <div class="card-body" style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center">
-        <input type="text" placeholder="Pega código o link (ej. 68f... o https://.../sesion/68f...)" [(ngModel)]="codigoSesion" class="search-input" style="flex:1;min-width:260px" />
-        <button class="btn-action" (click)="unirseSesionVivo()"><i class="fa-solid fa-door-open"></i> Unirse</button>
+      <div class="card-body live-join-body">
+        <input
+          type="text"
+          placeholder="Pega código o link (ej. 68f... o https://.../sesion/68f...)"
+          [(ngModel)]="codigoSesion"
+          class="search-input"
+          style="flex: 1; min-width: 260px"
+        />
+        <button class="btn-action" (click)="unirseSesionVivo()">
+          <i class="fa-solid fa-door-open"></i> Unirse
+        </button>
       </div>
     </div>
 
-    <!-- Módulo Cursos -->
-    <div *ngIf="activeModule === 'cursos'" class="module-section animate-fade">
+    <!-- Módulo 1: DASHBOARD -->
+    <div *ngIf="activeModule === 'dashboard'" class="module-section animate-fade">
+      <!-- Tarjeta de bienvenida y métricas -->
+      <div class="welcome-banner cosmic-card">
+        <div class="welcome-copy">
+          <span class="user-pill"><i class="fa-solid fa-user-graduate"></i> Panel del Aprendiz</span>
+          <h1>¡Hola, {{ usuario?.nombre || 'Aprendiz' }}!</h1>
+          <p>Continúa fortaleciendo tus habilidades técnicas con tus cursos y sesiones en vivo.</p>
+        </div>
+        <div class="stats-mini-grid">
+          <div class="stat-pill">
+            <span class="stat-num">{{ misCursosInscritos.length }}</span>
+            <span class="stat-lbl">Inscritos</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-num">{{ cursos.length }}</span>
+            <span class="stat-lbl">Disponibles</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mis Cursos Inscritos -->
       <div class="card cosmic-card">
         <div class="card-header">
-          <h2><i class="fa-solid fa-layer-group"></i> Catálogo de Cursos Disponibles</h2>
-          <input type="text" placeholder="Buscar curso..." [(ngModel)]="searchCurso" class="search-input" />
+          <h2><i class="fa-solid fa-bookmark"></i> Mis Cursos Inscritos</h2>
+          <button class="btn-action-sm" (click)="activeModule = 'cursos'">
+            <i class="fa-solid fa-compass"></i> Explorar Catálogo
+          </button>
         </div>
         <div class="card-body">
-          <div class="table-responsive">
+          <div *ngIf="cargando" class="empty-state">
+            <i class="fa-solid fa-spinner fa-spin"></i> Cargando información...
+          </div>
+
+          <div *ngIf="!cargando && misCursosInscritos.length === 0" class="empty-state">
+            <div class="empty-icon"><i class="fa-solid fa-book-open"></i></div>
+            <p>Aún no te has inscrito en ningún curso.</p>
+            <button class="btn-action" style="margin-top: 0.8rem" (click)="activeModule = 'cursos'">
+              <i class="fa-solid fa-plus"></i> Inscribirme a un curso
+            </button>
+          </div>
+
+          <div *ngIf="!cargando && misCursosInscritos.length > 0" class="table-responsive">
             <table>
               <thead>
                 <tr>
                   <th>Nombre del Curso</th>
+                  <th>Categoría</th>
                   <th>Instructor</th>
                   <th class="text-right">Acción</th>
                 </tr>
               </thead>
               <tbody>
-                <!-- 👇 Usamos trackById definido en el TS -->
+                <tr *ngFor="let curso of misCursosInscritos; trackBy: trackById">
+                  <td><strong>{{ curso.titulo }}</strong></td>
+                  <td><span class="category-badge">{{ curso.categoria }}</span></td>
+                  <td>{{ curso.mentor?.nombre || 'Mentor Asignado' }}</td>
+                  <td class="text-right">
+                    <button
+                      class="btn-cancel"
+                      (click)="cancelarInscripcion(curso._id, obtenerInscripcionId(curso))"
+                    >
+                      Cancelar inscripción
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Módulo 2: CATÁLOGO DE CURSOS -->
+    <div *ngIf="activeModule === 'cursos'" class="module-section animate-fade">
+      <div class="card cosmic-card">
+        <div class="card-header">
+          <h2><i class="fa-solid fa-layer-group"></i> Catálogo de Cursos Disponibles</h2>
+          <input
+            type="text"
+            placeholder="Buscar curso..."
+            [(ngModel)]="searchCurso"
+            class="search-input"
+          />
+        </div>
+        <div class="card-body">
+          <div *ngIf="cargando" class="empty-state">
+            <i class="fa-solid fa-spinner fa-spin"></i> Cargando cursos...
+          </div>
+
+          <div *ngIf="!cargando" class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nombre del Curso</th>
+                  <th>Categoría</th>
+                  <th>Instructor</th>
+                  <th class="text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
                 <tr *ngFor="let curso of cursos | filter:searchCurso; trackBy: trackById">
                   <td><strong>{{ curso.titulo }}</strong></td>
+                  <td><span class="category-badge">{{ curso.categoria }}</span></td>
                   <td>{{ curso.mentor?.nombre || 'Sin mentor asignado' }}</td>
                   <td class="text-right">
-                    <!-- Si el usuario NO está inscrito -->
-                    <!-- Si el curso NO tiene inscritos -->
-                    <button *ngIf="!curso.inscritos || curso.inscritos.length === 0" class="btn-action"
-                      (click)="inscribir(curso._id)">
+                    <button
+                      *ngIf="!estaInscrito(curso)"
+                      class="btn-action"
+                      (click)="inscribir(curso._id)"
+                    >
                       Inscribirse
                     </button>
 
-                    <!-- Si el curso YA tiene inscritos -->
-                    <button *ngIf="curso.inscritos && curso.inscritos.length > 0" class="btn-cancel"
-                      (click)="cancelarInscripcion(curso._id, curso.inscritos[0]._id)">
+                    <button
+                      *ngIf="estaInscrito(curso)"
+                      class="btn-cancel"
+                      (click)="cancelarInscripcion(curso._id, obtenerInscripcionId(curso))"
+                    >
                       Cancelar inscripción
                     </button>
                   </td>
                 </tr>
 
-                <!-- Mensaje si no hay cursos -->
                 <tr *ngIf="cursos.length === 0">
-                  <td colspan="3" class="empty-state">No se encontraron cursos.</td>
+                  <td colspan="4" class="empty-state">No se encontraron cursos disponibles.</td>
                 </tr>
               </tbody>
             </table>
@@ -61,7 +154,7 @@
     </div>
   </main>
 
-  <!-- Navbar derecha (igual que antes) -->
+  <!-- Navbar lateral derecha -->
   <aside class="internal-right-navbar cosmic-glass">
     <div class="navbar-header">
       <div class="nav-logo-icon">
@@ -71,12 +164,20 @@
     </div>
 
     <nav class="nav-menu">
-      <button [class.active]="activeModule === 'dashboard'" (click)="activeModule = 'dashboard'" class="nav-item">
+      <button
+        [class.active]="activeModule === 'dashboard'"
+        (click)="activeModule = 'dashboard'"
+        class="nav-item"
+      >
         <i class="fa-solid fa-chart-pie"></i>
         <span>Dashboard</span>
       </button>
 
-      <button [class.active]="activeModule === 'cursos'" (click)="activeModule = 'cursos'" class="nav-item">
+      <button
+        [class.active]="activeModule === 'cursos'"
+        (click)="activeModule = 'cursos'"
+        class="nav-item"
+      >
         <i class="fa-solid fa-book-open"></i>
         <span>Cursos</span>
       </button>

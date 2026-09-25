@@ -9,7 +9,7 @@
 - Bordes finos con opacidad baja + sombras difusas
 - Fondo con gradiente/vanta detrás de las tarjetas (el blur necesita color detrás)
 - Jerarquía por transparencia, no solo por color sólido
-- Tema dual `dark` (default) / `light` + acento opcional `cyberpunk` (violeta→cian → fucsia→turquesa)
+- Tema oscuro fijo (`dark`) con acentos de marca violeta y cian
 
 ## Variables CSS reales (`src/styles.css`)
 
@@ -25,23 +25,9 @@
   --bg-gradient: radial-gradient(circle at top left, #1B1035, #0B0715 70%);
   /* + tokens base: --bg-base, --surface-*, --border-*, --text-*, --accent-violet/cyan, --radius-*, --shadow-* */
 }
-[data-theme="light"] {
-  color-scheme: light;
-  --glass-bg: rgba(255, 255, 255, 0.62);
-  --glass-bg-strong: rgba(255, 255, 255, 0.8);
-  --glass-border: rgba(15, 23, 42, 0.12);
-  --glass-shadow: 0 8px 32px rgba(15, 23, 42, 0.12);
-  --glass-input: rgba(255, 255, 255, 0.75);
-  --bg-gradient: radial-gradient(circle at top left, #DCE7F7, #EDF1F7 70%);
-  /* + overrides --bg-base, --surface-*, --border-*, --text-* */
-}
-body.theme-cyberpunk {
-  --accent-violet: #FF2AFB; --accent-cyan: #00FFF7;
-  --bg-base: #05010D; /* + surfaces/borders/text/shadows neón */
-}
 ```
 
-Controladas por `ThemeService` (`shared/services/theme.service.ts`): signals `mode: 'dark'|'light'` (persistido `mentorsync-mode`, aplicado `document.documentElement.dataset.theme`) y `isCyberpunk` (persistido `mentorsync-theme`, clase `theme-cyberpunk` en `<body>`). Default `dark`.
+Tema único y fijo oscuro gestionado por `ThemeService` (`shared/services/theme.service.ts`) (`mode: 'dark'`). Los modos claro y cyberpunk fueron removidos por completo del sistema.
 
 Tokens legacy en `src/styles/_glass-tokens.scss` y `src/styles/styles.scss` (Tailwind) coexisten pero la verdad vigente es `src/styles.css`.
 
