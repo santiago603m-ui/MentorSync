@@ -8,6 +8,8 @@ import { AdminPageComponent } from './features/admin-panel/admin-panel.component
 import { roleGuard } from './core/guards/role.guard';
 import { AuthComponent } from './features/auth/auth.component';
 import { LiveSessionComponent } from './features/live-session/live-session.component';
+import { PagoResultadoComponent } from './features/pagos/pago-resultado/pago-resultado.component';
+import { PagoSimuladorComponent } from './features/pagos/pago-simulador/pago-simulador.component';
 
 export const routes: Routes = [
   {
@@ -22,6 +24,19 @@ export const routes: Routes = [
       { path: 'registro', redirectTo: 'auth', pathMatch: 'full' },
 
       { path: 'cursos', component: CursosPageComponent },
+
+      {
+        path: 'pago/resultado',
+        component: PagoResultadoComponent,
+        canActivate: [roleGuard],
+        data: { roles: ['Aprendiz'] }
+      },
+      {
+        path: 'pago/simulador',
+        component: PagoSimuladorComponent,
+        canActivate: [roleGuard],
+        data: { roles: ['Aprendiz'] }
+      },
 
       {
         path: 'aprendiz',

@@ -24,6 +24,19 @@
 
 ---
 
+## [2026-10-06] — Mercado Pago + simulador local
+
+**Hecho:**
+- Mercado Pago Checkout Pro mediante Preferences API, consulta de pagos por `external_reference` y webhook firmado.
+- Rapyd eliminado del módulo de pagos.
+- `PAYMENT_PROVIDER` permite alternar entre `mercadopago` y `simulador` sin modificar código.
+- El simulador local permite aprobar/rechazar pagos sin cuenta externa.
+- La inscripción directa sigue bloqueada con HTTP 402 para cursos de pago.
+
+**Verificación:** pruebas de proveedor y servicio, tipado Angular y build de desarrollo.
+
+---
+
 ## [2026-09-22] — Socket.io para reuniones en vivo (backend)
 
 **Hecho:**

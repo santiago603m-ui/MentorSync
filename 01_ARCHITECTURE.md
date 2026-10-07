@@ -17,8 +17,9 @@ Arquitectura por capas + modular por dominio (feature-based), tanto en backend c
 | Patrón | Dónde | Por qué |
 |---|---|---|
 | **MVC + capa de servicios** | Backend | `Controller` solo HTTP; `Service` con lógica; nunca lógica en controller |
-| **Repository Pattern** | `repositories/` (auth, course, document, knowledgeChunk, chatMessage, **user**) | Aísla Mongoose, facilita testing |
+| **Repository Pattern** | `repositories/` (auth, course, payment, document, knowledgeChunk, chatMessage, **user**) | Aísla Mongoose, facilita testing |
 | **Strategy Pattern** | `services/ai/providers/` | `IAssistantProvider` con `generarRespuesta()`; `GroqProvider` desacoplado, también usado para `generarEstructuraCurso` |
+| **Pasarela encapsulada** | `services/payments/mercadopago.provider.js` | Mercado Pago Preferences API y validación de webhook aislados del backend |
 | **Factory Pattern** | Creación de contexto de bot por mentor | Cada mentor tiene su propia configuración de asistente |
 | **Observer / Event-driven** | Socket.io (`sockets/index.js`) | Eventos: `sala:unirse`, `sala:mensaje` → `sala:mensaje_nuevo` (persistido en ChatMessage con `liveSessionId`), `sala:escribiendo`, `sala:abandonar` / `sala:usuario_unido|salio`, `mentor_desconectado`, `bot_activado` |
 | **Middleware chain (RBAC)** | `middlewares/role.middleware.js` + `verificarPropiedad(curso, mentorId, rol)` | Control por rol + bypass `administrador` en cursos |
@@ -39,6 +40,8 @@ backend/
 │   │   ├── embedding.service.js # @xenova/transformers (Xenova/all-MiniLM-L6-v2, LOCAL, 384D)
 │   │   ├── chat.service.js      # threadId (UUID), curso publicado requerido
 │   │   ├── user.service.js      # listarUsuarios (filtros paginados), resumenRoles (aggregate), crearUsuario, cambiarRol/Estado (anti auto-cambio)
+│   │   ├── payment.service.js   # checkout, webhook, estado local e inscripción pagada
+│   │   ├── payments/mercadopago.provider.js # Checkout Pro + estado de pagos
 │   │   └── ai/
 │   │       ├── rag.service.js
 │   │       └── providers/ (assistant-provider.interface.js, groq.provider.js)
@@ -69,6 +72,7 @@ frontend/src/app/
 │   ├── courses/           # cursos-page
 │   ├── learner-dashboard/ # aprendiz-page
 │   ├── mentor-dashboard/ # mentor-dashboard (standalone inline)
+│   ├── pagos/           # retorno de Mercado Pago, consulta de estado y simulador local
 │   ├── admin-panel/       # admin-panel (usa AdminService + Sidebar) + admin-dashboard-quick (doughnut/círculos, barras semanales, crecimiento)
 │   └── ai-assistant/      # .gitkeep (reservado)
 ├── models/                 # admin.models.ts (UsuarioApi/CursoApi con _id, activo, rol minusculas, estado borrador|publicado|archivado, inscritos[]), auth.model.ts, curso.model.ts
@@ -84,5 +88,14 @@ frontend/src/app/
 3. **Retrieval+Generación (✅):** `POST /api/cursos/:cursoId/chat` (auth, curso `publicado` requerido) → embed pregunta → `knowledgeChunkRepository.buscarSimilares(courseId, vector, 5)` con `filter:{courseId}` obligatorio → armar prompt system+context → `groqProvider.generarRespuesta` (temp 0.3, max 1024) → guardar en `chatmessages` → `{threadId, respuesta, fragmentosUsados}`.
 4. **Aislamiento por curso:** toda `$vectorSearch` filtra por `courseId`; cada curso es un store lógico dentro de `knowledgechunks`.
 5. **Historial:** `threadId` UUID v4; `GET /api/cursos/chat/historial/:threadId`.
+
+## Flujo de pago
+
+1. El aprendiz pulsa comprar en `/cursos` o `/aprendiz`.
+2. `POST /api/pagos/checkout` obtiene precio/usuario del servidor y crea una preferencia en Mercado Pago.
+3. Angular redirige a `sandbox_init_point` (pruebas) o `init_point` (producción).
+4. Al volver, el backend consulta el pago por `external_reference`; el webhook firmado es una vía adicional de confirmación.
+5. Un pago aprobado genera la inscripción una sola vez.
+6. Al volver, `/pago/resultado` consulta el estado autenticado local.
 
 Ver `04_DATABASE_SCHEMA.md` para colecciones (incluye `inscritos` y `modulos` en `cursos`) y `06_API_MODELS_REFERENCE.md` para pipeline detallado.

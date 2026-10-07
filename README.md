@@ -23,6 +23,7 @@ Plataforma web de mentoría híbrida con asistente de IA por curso (RAG).
 **Frontend:** Angular 22 (standalone, signal-first) + glassmorphism + Vanta.js + GSAP/anime.js  
 **IA/RAG:** ✅ Groq API (Llama 3.3 70B) + ✅ @xenova/transformers (`all-MiniLM-L6-v2`, 384D, local) + ✅ MongoDB Atlas Vector Search  
 **Storage:** Cloudinary (PDFs, `resource_type: 'raw'`) + sharp (imágenes)  
+**Pagos:** Mercado Pago Checkout Pro + consulta de pagos + webhook firmado + simulador local
 **Realtime:** ✅ Socket.io para reuniones en vivo (`sockets/index.js`, `liveSession` + `ChatMessage.liveSessionId`, rooms `sesion:{id}`) + chat bot HTTP  
 **Seguridad:** helmet, cors, compression, express-mongo-sanitize, express-rate-limit, validator, pino
 
@@ -113,6 +114,13 @@ cp .env.example .env
 #   CLOUDINARY_API_SECRET=
 #   GROQ_API_KEY=
 #   GROQ_MODEL=llama-3.3-70b-versatile
+#   PAYMENT_PROVIDER=mercadopago
+#   FRONTEND_URL=http://localhost:4200
+#   MERCADO_PAGO_ENV=sandbox
+#   MERCADO_PAGO_ACCESS_TOKEN=
+#   MERCADO_PAGO_PUBLIC_KEY=
+#   MERCADO_PAGO_NOTIFICATION_URL=
+#   MERCADO_PAGO_WEBHOOK_SECRET=
 
 # Verificar configuración
 npm run check-setup
@@ -154,7 +162,11 @@ Ver [`06_API_MODELS_REFERENCE.md`](06_API_MODELS_REFERENCE.md) sección 9 para l
 - `POST /api/cursos` — Crear curso (mentor o administrador con `body.mentor` para asignar)
 - `GET /api/cursos/:id` — Ver curso (público)
 - `PATCH /api/cursos/:id` / `PATCH /api/cursos/:id/estado` / `DELETE /api/cursos/:id` — Actualizar/cambiar estado/borrar (dueño o administrador)
-- `POST /api/cursos/:id/inscribir` — Inscribir aprendiz autenticado (`inscritos[]` embebido)
+- `POST /api/cursos/:id/inscribir` — Inscripción directa solo para cursos gratuitos; los cursos de pago requieren Mercado Pago
+- `POST /api/pagos/checkout` — Crear preferencia de Mercado Pago (aprendiz autenticado)
+- `GET /api/pagos/estado/:referencia` — Consultar el estado persistido por el webhook
+- `POST /api/pagos/simular/:referencia` — Aprobar o rechazar un pago local de prueba (solo `PAYMENT_PROVIDER=simulador`)
+- `POST /api/pagos/confirmacion` — Confirmación server-to-server de Mercado Pago
 - `DELETE /api/cursos/:id/inscritos/:inscritoId` — Cancelar inscripción (aprendiz)
 - `POST /api/cursos/:id/generar-estructura` — Generar `modulos/lecciones` vía Groq JSON (solo mentor dueño)
 - `POST /api/cursos/:cursoId/documentos` — Subir PDF y procesarlo (solo dueño del curso)

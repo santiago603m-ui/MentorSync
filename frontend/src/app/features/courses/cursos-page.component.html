@@ -85,7 +85,9 @@
           </div>
         </div>
 
-        <button class="btn-enroll" (click)="inscribirse()">Inscribirse Ahora</button>
+        <button class="btn-enroll" (click)="inscribirse()" [disabled]="procesandoPago">
+          {{ procesandoPago ? 'Redirigiendo al pago...' : 'Inscribirse Ahora' }}
+        </button>
       </div>
     </div>
   </div>

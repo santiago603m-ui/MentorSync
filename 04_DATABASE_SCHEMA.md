@@ -50,6 +50,19 @@ createdAt, updatedAt
 ```
 Índices: `{ mentor: 1 }`, `{ estado: 1 }`.
 
+### `pagos` (modelo `Pago`, `payment.model.js`)
+```
+referencia: String, unique                 // "MS-<uuid v4>" = external_reference de Mercado Pago
+usuario: { id → usuarios, nombre, correo }
+curso → cursos
+montoCentavos: Number, min 1
+moneda: "COP"
+estado: "PENDIENTE" | "APROBADO" | "RECHAZADO" | "ANULADO" | "ERROR"
+inscripcionAplicada: Boolean                // claim atómico
+pasarela: { proveedor, idCheckout, idPago, metodo, estadoOriginal, detalle, evento }
+createdAt, updatedAt
+```
+
 ### `enrollments`  (modelo `Enrollment`, `enrollment.model.js`) — sin repository/service (reservado)
 ```
 _id

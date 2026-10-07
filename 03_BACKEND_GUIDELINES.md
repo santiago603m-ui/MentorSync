@@ -58,6 +58,18 @@ Error: `{ "success": false, "error": { "message": "..." } }` (pasado por `maneja
 - `disconnect` → para cada `liveSessionId` en `socket.data.sesiones`, broadcast `sala:usuario_salio` y si `rol==='mentor'` también `mentor_desconectado` (permite al frontend mostrar aviso y activar el bot).
 - Validación de mensajes con `esquemaMensajeSala` (Zod) en frontend y `trim().length` en socket; `liveSession` estados `programada|en_curso|finalizada|cancelada` validados por `esquemaCambiarEstadoSesion`.
 
+## Pagos Mercado Pago
+
+- `mercadopago.provider.js` encapsula la Preferences API, consulta de pagos, firma del webhook y mapeo de estados.
+- `POST /api/pagos/confirmacion` recibe el webhook firmado de Mercado Pago cuando está configurado.
+- El retorno del navegador nunca es fuente de verdad: `GET /api/pagos/estado/:referencia` consulta la API de Mercado Pago.
+- `PaymentRepository.reclamarInscripcion` evita aplicar dos veces la misma confirmación.
+- `POST /api/cursos/:id/inscribir` rechaza con 402 los cursos de precio mayor que cero.
+
+Variables: `PAYMENT_PROVIDER` (`mercadopago` o `simulador`), `SIMULATOR_FRONTEND_URL`, `FRONTEND_URL`, `MERCADO_PAGO_ENV`, `MERCADO_PAGO_ACCESS_TOKEN`, `MERCADO_PAGO_PUBLIC_KEY`, `MERCADO_PAGO_NOTIFICATION_URL`, `MERCADO_PAGO_WEBHOOK_SECRET`. En sandbox se admite localhost; `auto_return` solo se envía cuando la URL es pública.
+
+El simulador solo es para desarrollo: `POST /api/pagos/simular/:referencia` queda deshabilitado salvo que `PAYMENT_PROVIDER=simulador`. Nunca debe activarse en producción.
+
 ## Control de acceso por rol (RBAC)
 
 ```js

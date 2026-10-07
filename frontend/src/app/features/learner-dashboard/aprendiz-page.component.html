@@ -129,8 +129,9 @@
                       *ngIf="!estaInscrito(curso)"
                       class="btn-action"
                       (click)="inscribir(curso._id)"
+                      [disabled]="cursoProcesandoPago === curso._id"
                     >
-                      Inscribirse
+                      {{ cursoProcesandoPago === curso._id ? 'Redirigiendo...' : 'Inscribirse' }}
                     </button>
 
                     <button

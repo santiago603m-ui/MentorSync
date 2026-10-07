@@ -36,6 +36,7 @@ Plataforma web de mentoría híbrida (estilo Platzi, pero diferenciada) donde:
 
 - **Frontend:** Angular 22 standalone + SSR (signal-first) + diseño **glassmorphism** (ver `02_FRONTEND_GUIDELINES.md`) + Vanta.js (three) + GSAP/anime.js + `marked`+`dompurify` para render de bot + Font Awesome 6.5.2 (CDN) — **✅ implementado** (`home`, `auth` unificada, `courses`, `learner-dashboard`, `mentor-dashboard`, `admin-panel` + `sidebar` Atlas + `theme.service`)
 - **Backend:** Node.js 24.20 + Express 4.21.x + Mongoose 8.9
+- **Pagos:** Mercado Pago Checkout Pro (Preferences API) — el backend crea la preferencia, Angular redirige a `sandbox_init_point`/`init_point` y consulta el pago en la API. Webhook firmado opcional. Incluye `PAYMENT_PROVIDER=simulador` para pruebas locales
 - **Base de datos:** MongoDB Atlas (incluye **Atlas Vector Search** para el RAG — no Pinecone/Weaviate)
 - **Almacenamiento de archivos:** Cloudinary (PDFs `resource_type: 'raw'`, carpeta `mentorsync/documentos`) + `sharp` para imágenes — **✅ implementado**
 - **IA generativa:** Groq API (`llama-3.3-70b-versatile`) — **✅ implementado** en `groq.provider.js` y en generación de estructura de cursos (`course.service.generarEstructuraCurso`)

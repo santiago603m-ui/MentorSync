@@ -8,6 +8,7 @@ import {
   esquemaCambiarEstado,
 } from '../validators/course.validator.js';
 import courseController from '../controllers/course.controller.js';
+import { exigirPagoSiCursoEsDePago } from '../middlewares/payment-required.middleware.js';
 
 const router = Router();
 
@@ -52,7 +53,8 @@ router.post(
 router.post(
   '/:id/inscribir',
   verificarToken,
-  courseController.inscribirCurso // 👈 asegúrate de crear este método en el controlador
+  exigirPagoSiCursoEsDePago,
+  courseController.inscribirCurso
 );
 
 router.patch(

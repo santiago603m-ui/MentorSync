@@ -5,6 +5,8 @@ import { CursoService } from "../../core/services/curso.service";
 import { Curso } from '../../models/curso.model';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from '../../core/services/auth.service';
+import { PagoService } from '../../core/services/pago.service';
 
 @Component({
   selector: 'app-cursos-page',
@@ -20,11 +22,14 @@ export class CursosPageComponent implements OnInit, AfterViewInit {
   cursos: Curso[] = [];
   displayedCourses: Curso[] = [];
   cargando = true;
+  procesandoPago = false;
 
   // 👇 aquí inyectamos ChangeDetectorRef
   constructor(
     private router: Router,
     private cursoService: CursoService,
+    private authService: AuthService,
+    private pagoService: PagoService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -48,6 +53,36 @@ export class CursosPageComponent implements OnInit, AfterViewInit {
   }
 
   inscribirse() {
+    const curso = this.selectedCourse;
+    if (!curso?._id) return;
+
+    if (
+      curso.precio > 0 &&
+      this.authService.isLoggedIn() &&
+      this.authService.rolCoincide(['Aprendiz'])
+    ) {
+      if (this.procesandoPago) return;
+      this.procesandoPago = true;
+      this.pagoService.crearCheckout(curso._id).subscribe({
+        next: ({ data }) => {
+          const destino = data.modoSimulacion ? data.simuladorUrl : data.redirectUrl;
+          if (destino) {
+            this.pagoService.abrirCheckout(destino);
+          } else {
+            this.procesandoPago = false;
+          }
+        },
+        error: (error: unknown) => {
+          this.procesandoPago = false;
+          const apiError = error as {
+            error?: { message?: string; error?: { message?: string } };
+          };
+          alert(apiError.error?.error?.message || apiError.error?.message || 'No se pudo iniciar el pago.');
+        },
+      });
+      return;
+    }
+
     this.selectedCourse = null;
     this.router.navigate(['/login']);
   }

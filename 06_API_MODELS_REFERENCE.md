@@ -79,6 +79,10 @@ Subesquemas:
 
 **Estado:** solo modelo, sin repository/service/controller.
 
+### `payment.model.js` → `Pago` (colección `pagos`)
+
+Campos: `referencia` única `MS-<uuid>`, snapshot de `usuario`, `curso`, `montoCentavos`, `moneda: COP`, `estado`, `inscripcionAplicada` y subdocumento `pasarela` (`proveedor`, `idCheckout`, `idPago`, `metodo`, `estadoOriginal`, `detalle`, `evento`).
+
 ### `liveSession.model.js` → `LiveSession` (colección real: `livesessions`)
 
 | Campo | Tipo | Notas |
@@ -204,6 +208,10 @@ Capa que encapsula Mongoose. Los services nunca importan modelos directos.
 | `listarPorThread` | `(threadId)` | `find({threadId}).sort({createdAt:1})` |
 | `listarPorCurso` | `(courseId, limite=50)` | `find({courseId}).sort({createdAt:-1}).limit(limite)` |
 
+### `payment.repository.js` → `PagoRepository`
+
+Métodos: `crear`, `buscarPorReferencia`, `existeAprobado`, `actualizarEstado` con estado esperado, `reclamarInscripcion` y `liberarInscripcion`.
+
 ---
 
 ## 3. Services
@@ -281,6 +289,14 @@ Capa que encapsula Mongoose. Los services nunca importan modelos directos.
 | `enviarPregunta` | `(cursoId, aprendizId, pregunta, threadId?)` | Valida curso existe y `estado==='publicado'` (403 si no), genera `threadId=randomUUID()` si falta, guarda pregunta, llama `ragService.responderPregunta`, guarda respuesta bot → `{threadId, respuesta, mensajeId, fragmentosUsados}` |
 | `obtenerHistorial` | `(threadId)` | `listarPorThread` |
 
+### `payment.service.js` → `PagoService`
+
+`crearCheckout` obtiene curso/usuario del servidor, firma `POST /v1/checkout` y persiste el intento con `checkoutId`. `procesarConfirmacion` valida el webhook JSON, `aplicarConfirmacion` compara monto/moneda y estados, y `consultarEstadoLocal` permite al aprendiz consultar su propio resultado. `aplicarInscripcion` usa un claim atómico.
+
+### `payments/mercadopago.provider.js`
+
+Concentra `crearPreferenciaMercadoPago`, `buscarPagoPorReferencia`, `obtenerPagoMercadoPago`, `verificarFirmaWebhookMercadoPago` y `estadoMercadoPago`.
+
 ---
 
 ## 4. Controllers
@@ -330,6 +346,10 @@ Todos `try/catch → next(error)`.
 | `listarDocumentos` | `GET /api/cursos/:cursoId/documentos` | `listarDocumentosDeCurso` →200 |
 | `verChunks` | `GET /api/cursos/:cursoId/documentos/:documentoId/chunks` | `knowledgeChunkRepository.buscarPorDocumento` directo (debt) →200 |
 
+### `payment.controller.js`
+
+`crearCheckout` → `POST /api/pagos/checkout`; `consultarEstado` → `GET /api/pagos/estado/:referencia`; `recibirConfirmacion` → `POST /api/pagos/confirmacion`.
+
 ### `chat.controller.js` (singleton)
 
 | Método | Ruta | Qué hace |
@@ -377,6 +397,10 @@ Debe ir después de `verificarToken`. 401 si `req.usuario.rol` falta, 403 si no 
 | `esquemaCrearCurso` | `titulo` (3–120), `descripcion` (10–2000), `categoria` (2–60), `precio` (≥0 opcional), `duracionEstimadaHoras` (≥0 opcional), `mentor` (string opcional para admin) |
 | `esquemaActualizarCurso` | `esquemaCrearCurso.partial()` |
 | `esquemaCambiarEstado` | `estado` (enum `borrador|publicado|archivado`, `error: ()=>'Estado inválido'`) |
+
+### `payment.validator.js`
+
+`esquemaCrearCheckout` valida `cursoId`; `validarParamsReferencia` valida `MS-<uuid v4>`.
 
 ### `chat.validator.js`
 
@@ -460,6 +484,15 @@ Base URL: `http://localhost:4000`
 | `PATCH` | `/api/cursos/:id/estado` | `verificarToken` + `verificarRol('mentor','administrador')` + `validar(esquemaCambiarEstado)` | |
 | `DELETE` | `/api/cursos/:id` | `verificarToken` + `verificarRol('mentor','administrador')` | Soft delete `activo:false` |
 
+### `/api/pagos`
+
+| Método | Ruta | Middleware | Notas |
+|---|---|---|---|
+| `POST` | `/api/pagos/checkout` | token + `aprendiz` + Zod | Crea preferencia de Mercado Pago y devuelve `redirectUrl` |
+| `GET` | `/api/pagos/estado/:referencia` | token + `aprendiz` + Zod | Solo el dueño del intento |
+| `POST` | `/api/pagos/simular/:referencia` | token + `aprendiz` + Zod | Solo con `PAYMENT_PROVIDER=simulador`; aprobado o rechazado |
+| `POST` | `/api/pagos/confirmacion` | JSON + firma HMAC-SHA256 | Webhook público de Mercado Pago (opcional en pruebas locales) |
+
 ### `/api/cursos` — documentos y chat
 
 | Método | Ruta | Middleware | Notas |
@@ -518,6 +551,15 @@ CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
 GROQ_API_KEY=
 GROQ_MODEL=
+FRONTEND_URL=
+PAYMENT_PROVIDER=mercadopago
+SIMULATOR_FRONTEND_URL=http://localhost:4200
+FRONTEND_URL=http://localhost:4200
+MERCADO_PAGO_ENV=sandbox
+MERCADO_PAGO_ACCESS_TOKEN=
+MERCADO_PAGO_PUBLIC_KEY=
+MERCADO_PAGO_NOTIFICATION_URL=
+MERCADO_PAGO_WEBHOOK_SECRET=
 ```
 
 `GROQ_API_KEY`/`GROQ_MODEL` necesarias para chat y `generar-estructura`. Servidor arranca sin ellas (lazy init), pero esas rutas lanzan 503 si faltan. `check-setup.js` valida `PORT`, `MONGODB_URI`, `JWT_SECRET`, `GROQ_API_KEY`, `GROQ_MODEL`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (8 vars).

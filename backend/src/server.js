@@ -11,6 +11,7 @@ import { Server } from 'socket.io';
 import authRoutes from './routes/auth.routes.js';
 import cursoRoutes from './routes/course.routes.js';
 import usuarioRoutes from './routes/user.routes.js';
+import pagoRoutes from './routes/payment.routes.js';
 import documentRoutes from './routes/document.routes.js';
 import liveSessionRoutes from './routes/liveSession.routes.js';
 import { manejarErrores } from './middlewares/error.middleware.js';
@@ -24,7 +25,13 @@ const app = express();
 app.use(helmet());
 app.use(cors());
 app.use(compression());
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, res, buffer) => {
+      req.rawBody = buffer.toString('utf8');
+    },
+  })
+);
 app.use(mongoSanitize());
 app.use(pinoHttp());
 app.use(
@@ -37,6 +44,7 @@ app.use(
 // Rutas
 app.use('/api/auth', authRoutes);
 app.use('/api/usuarios', usuarioRoutes);
+app.use('/api/pagos', pagoRoutes);
 app.use('/api/sesiones', liveSessionRoutes);
 app.use('/api/cursos', cursoRoutes);
 app.use('/api/cursos', documentRoutes);

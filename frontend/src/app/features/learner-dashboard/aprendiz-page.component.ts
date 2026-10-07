@@ -7,6 +7,7 @@ import { CursoService } from '../../core/services/curso.service';
 import { Curso } from '../../models/curso.model';
 import { AuthService } from '../../core/services/auth.service';
 import { LiveSessionService } from '../../core/services/live-session.service';
+import { PagoService } from '../../core/services/pago.service';
 
 @Component({
   selector: 'app-aprendiz-page',
@@ -21,12 +22,14 @@ export class AprendizPageComponent implements OnInit {
   cursos: Curso[] = [];
   codigoSesion = '';
   cargando = true;
+  cursoProcesandoPago = '';
   usuario: { id?: string; _id?: string; nombre?: string; email?: string; rol?: string } | null = null;
 
   constructor(
     private cursoService: CursoService,
     private authService: AuthService,
     private router: Router,
+    private pagoService: PagoService,
     private liveSessionService: LiveSessionService
   ) {}
 
@@ -81,6 +84,30 @@ export class AprendizPageComponent implements OnInit {
     if (!cursoId) return;
     if (!this.authService.isLoggedIn()) {
       this.router.navigate(['/login']);
+      return;
+    }
+
+    const curso = this.cursos.find((item) => item._id === cursoId);
+    if (curso && curso.precio > 0) {
+      if (this.cursoProcesandoPago) return;
+      this.cursoProcesandoPago = cursoId;
+      this.pagoService.crearCheckout(cursoId).subscribe({
+        next: ({ data }) => {
+          const destino = data.modoSimulacion ? data.simuladorUrl : data.redirectUrl;
+          if (destino) {
+            this.pagoService.abrirCheckout(destino);
+          } else {
+            this.cursoProcesandoPago = '';
+          }
+        },
+        error: (error: unknown) => {
+          this.cursoProcesandoPago = '';
+          const apiError = error as {
+            error?: { message?: string; error?: { message?: string } };
+          };
+          alert(apiError.error?.error?.message || apiError.error?.message || 'No se pudo iniciar el pago.');
+        },
+      });
       return;
     }
 
